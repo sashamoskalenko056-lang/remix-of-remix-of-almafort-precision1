@@ -10,8 +10,13 @@ export async function ensureServerWebSocket(): Promise<void> {
   if (typeof g.WebSocket !== "undefined") return;
   if (!g.process?.versions?.node) return;
   try {
-    const mod = (await import("ws")) as unknown as { default?: unknown; WebSocket?: unknown };
-    const impl = (mod.WebSocket ?? mod.default) as unknown;
+    // Спецификатор через переменную: бандлер edge-сборки не тянет `ws` в граф.
+    const specifier = "ws";
+    const mod = (await import(/* @vite-ignore */ specifier)) as {
+      default?: unknown;
+      WebSocket?: unknown;
+    };
+    const impl = mod.WebSocket ?? mod.default;
     if (impl) g.WebSocket = impl;
   } catch {
     // Пакет недоступен (edge-сборка) — оставляем как есть.
