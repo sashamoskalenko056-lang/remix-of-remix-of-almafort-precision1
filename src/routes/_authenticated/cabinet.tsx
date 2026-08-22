@@ -55,7 +55,7 @@ function CabinetPage() {
   const navigate = useNavigate();
   const addLine = useCart((s) => s.addLine);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["cabinet"],
     queryFn: () => fetchCabinet(),
     // Истёкшую сессию бессмысленно ретраить — уводим на /auth.
@@ -136,16 +136,31 @@ function CabinetPage() {
       </Shell>
     );
   }
+  if (isAuthError(error)) {
+    return (
+      <Shell>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Сессия истекла — открываем страницу входа…
+        </div>
+      </Shell>
+    );
+  }
   if (error || !data) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Не удалось загрузить кабинет.";
     return (
       <Shell>
         <p className="text-sm text-primary">Не удалось загрузить кабинет.</p>
+        <p className="mt-1 text-xs text-muted-foreground break-words">{message}</p>
         <button
           type="button"
-          onClick={() => void qc.invalidateQueries({ queryKey: ["cabinet"] })}
-          className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+          className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         >
-          <RefreshCw className="size-4" /> Повторить
+          <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} /> Повторить
         </button>
       </Shell>
     );
