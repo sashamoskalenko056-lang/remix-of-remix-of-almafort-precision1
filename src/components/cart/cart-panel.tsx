@@ -219,7 +219,7 @@ export function CartPanel() {
             company: (party?.name || form.company).trim(),
             comment: form.comment.trim().slice(0, 2000),
           },
-          ...(party?.inn ? { inn: party.inn } : {}),
+          inn: party?.inn || inn.replace(/\D/g, ""),
           ...(party?.kpp ? { kpp: party.kpp } : {}),
           city,
           carrier,

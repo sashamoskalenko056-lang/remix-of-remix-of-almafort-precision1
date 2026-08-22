@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit.server";
 import { readJson, SlowRequestError, timeoutResponse } from "@/lib/request-guard.server";
+import { requiredFieldsResponse, zEmail, zInn, zName, zPhone } from "@/lib/required-fields";
 
 /** Обрезаем длинные строки вместо отказа: юрназвания и адреса из ЕГРЮЛ бывают очень длинными. */
 const text = (max: number) =>
@@ -11,26 +12,17 @@ const text = (max: number) =>
     .transform((s) => s.slice(0, max));
 
 const schema = z.object({
+  // ФИО, телефон и почта обязательны: без них счёт выставить не по кому.
   customer: z.object({
-    name: text(120).refine((s) => s.length >= 2, "Укажите имя"),
-    phone: text(32).refine((s) => s.replace(/\D/g, "").length >= 10, "Укажите телефон"),
-    // Некорректный e-mail не должен блокировать заказ — просто игнорируем его.
-    email: z
-      .string()
-      .trim()
-      .max(320)
-      .nullish()
-      .transform((s) => (s && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s) ? s.slice(0, 160) : "")),
+    name: zName,
+    phone: zPhone,
+    email: zEmail,
     company: text(300).nullish(),
     comment: text(2000).nullish(),
   }),
   // Реквизиты плательщика: 1С мэтчит контрагента именно по ИНН.
-  inn: z
-    .string()
-    .trim()
-    .regex(/^\d{10}(\d{2})?$/)
-    .nullish()
-    .catch(null),
+  // ИНН плательщика обязателен: 1С мэтчит контрагента именно по нему.
+  inn: zInn,
   kpp: text(12).nullish().catch(null),
   city: text(300).default(""),
   carrier: z.enum(["cdek", "dl", "pickup"]),
