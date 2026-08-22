@@ -431,9 +431,16 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
         ref={fileRef}
         type="file"
         accept="image/*,.heic,.heif"
-        className="hidden"
-        onChange={(e) => void pickFile(e.target.files?.[0])}
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          // Сбрасываем значение: иначе повторный выбор того же файла
+          // не вызывает onChange и кнопка выглядит «мёртвой».
+          e.target.value = "";
+          void pickFile(file);
+        }}
       />
+
 
       {/* ПК без камеры: зона Drag & Drop, лоадер анализа и явный Error State. */}
       {cameraMode === false && !showSheet && (
