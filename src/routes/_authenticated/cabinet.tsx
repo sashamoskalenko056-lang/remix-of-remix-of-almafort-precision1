@@ -19,6 +19,7 @@ import { BackLink } from "@/components/back-link";
 import { formatPrice } from "@/lib/pricing";
 import { innHint, isValidInn, sanitizeInn } from "@/lib/inn";
 import { InnField, type Party } from "@/components/inn-field";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { STAGES, TIER_META, stageIndex, tierProgress, type LoyaltyTier } from "@/lib/loyalty";
 import { addCompanyByInn, getCabinet, removeCompany, repeatOrder } from "@/lib/cabinet.functions";
@@ -60,6 +61,10 @@ function CabinetPage() {
     queryFn: () => fetchCabinet(),
     // Истёкшую сессию бессмысленно ретраить — уводим на /auth.
     retry: (count, err) => !isAuthError(err) && count < 2,
+    // Возврат в кабинет из каталога не должен снова блокировать экран.
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // 401 = токен протух: чистим сессию и отправляем на вход, а не показываем заглушку.
@@ -127,11 +132,21 @@ function CabinetPage() {
     }
   };
 
+  // Скелетон вместо пустого экрана: интерфейс появляется мгновенно.
   if (isLoading) {
     return (
       <Shell>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Загружаем данные кабинета…
+        <Skeleton className="h-9 w-72" />
+        <Skeleton className="mt-3 h-4 w-full max-w-[42rem]" />
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="space-y-6">
+            <Skeleton className="h-48 w-full rounded-sm" />
+            <Skeleton className="h-72 w-full rounded-sm" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-56 w-full rounded-sm" />
+            <Skeleton className="h-40 w-full rounded-sm" />
+          </div>
         </div>
       </Shell>
     );

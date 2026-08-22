@@ -108,8 +108,11 @@ export const Route = createFileRoute("/api/public/send-mail")({
               options: { redirectTo: `${siteUrl()}/reset-password` },
             });
             // Не раскрываем, зарегистрирован ли адрес.
-            if (error || !data?.properties?.action_link) return json(request, { ok: true });
-            const link = forceOurHost(data.properties.action_link);
+            if (error) console.error("[send-mail] generateLink:", error.message);
+            const hashed = data?.properties?.hashed_token;
+            if (error || !hashed) return json(request, { ok: true });
+            // Ссылка строится только от PUBLIC_SITE_URL: ни одного стороннего домена в письме.
+            const link = `${siteUrl()}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
             const mail = recoveryEmail(link);
             await sendMail({ to: body.email, ...mail });
             return json(request, { ok: true });
@@ -130,22 +133,20 @@ export const Route = createFileRoute("/api/public/send-mail")({
           await sendMail({ to: body.email, ...mail });
           return json(request, { ok: true });
         } catch (e) {
-          console.error("[send-mail]", e);
+          const err = e as NodeJS.ErrnoException & { command?: string; response?: string };
+          console.error(
+            "[send-mail] сбой отправки:",
+            JSON.stringify({
+              type: body.type,
+              code: err?.code ?? null,
+              command: err?.command ?? null,
+              response: err?.response ?? null,
+              message: err?.message ?? String(e),
+            }),
+          );
           return json(request, { error: "Не удалось отправить письмо" }, 500);
         }
       },
     },
   },
 });
-
-/** Ссылка обязана вести на боевой хост, а не на служебный домен Supabase-редиректа. */
-function forceOurHost(actionLink: string): string {
-  try {
-    const url = new URL(actionLink);
-    const redirect = url.searchParams.get("redirect_to");
-    if (redirect) url.searchParams.set("redirect_to", `${siteUrl()}/reset-password`);
-    return url.toString();
-  } catch {
-    return actionLink;
-  }
-}

@@ -29,44 +29,111 @@ function requireEnv(name: string): string {
   return value;
 }
 
+type NodemailerModule = {
+  default?: { createTransport: (o: unknown) => Transporter };
+  createTransport?: (o: unknown) => Transporter;
+};
+
+/** Грузим nodemailer в обход бандлера: сначала CommonJS require, затем import(). */
+async function loadNodemailer(): Promise<{ createTransport: (o: unknown) => Transporter }> {
+  try {
+    const moduleSpecifier = "node:module";
+    const { createRequire } = (await import(/* @vite-ignore */ moduleSpecifier)) as {
+      createRequire: (path: string) => (id: string) => NodemailerModule;
+    };
+    const mod = createRequire(import.meta.url)("nodemailer");
+    const nm = mod.default ?? mod;
+    if (nm.createTransport) return nm as { createTransport: (o: unknown) => Transporter };
+  } catch (e) {
+    console.error("[mailer] require('nodemailer') не сработал:", (e as Error)?.message);
+  }
+  const specifier = "nodemailer";
+  const mod = (await import(/* @vite-ignore */ specifier)) as NodemailerModule;
+  const nm = mod.default ?? mod;
+  if (!nm.createTransport) throw new Error("nodemailer не установлен на сервере (npm i nodemailer)");
+  return nm as { createTransport: (o: unknown) => Transporter };
+}
+
+export function smtpConfig() {
+  const port = Number(process.env["SMTP_PORT"] ?? 465);
+  // 465 — implicit SSL/TLS (Яндекс/Mail.ru), 587 и 25 — STARTTLS поверх открытого соединения.
+  const secure = (process.env["SMTP_SECURE"] ?? "").trim()
+    ? /^(1|true|yes)$/i.test(process.env["SMTP_SECURE"]!)
+    : port === 465;
+  return {
+    host: requireEnv("SMTP_HOST"),
+    port,
+    secure,
+    requireTLS: !secure && port === 587,
+    auth: { user: requireEnv("SMTP_USER"), pass: requireEnv("SMTP_PASS") },
+    pool: true,
+    maxConnections: 3,
+    // Без явных таймаутов зависший SMTP держит запрос до таймаута nginx.
+    connectionTimeout: 15_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+    tls: { minVersion: "TLSv1.2" as const },
+    logger: process.env["SMTP_DEBUG"] === "1",
+    debug: process.env["SMTP_DEBUG"] === "1",
+  };
+}
+
 async function getTransporter(): Promise<Transporter> {
   if (!transporterPromise) {
     transporterPromise = (async () => {
-      // Спецификатор через переменную: edge-сборка не тянет nodemailer в граф.
-      const specifier = "nodemailer";
-      const mod = (await import(/* @vite-ignore */ specifier)) as {
-        default?: { createTransport: (o: unknown) => Transporter };
-        createTransport?: (o: unknown) => Transporter;
-      };
-      const nodemailer = mod.default ?? mod;
-      const port = Number(process.env["SMTP_PORT"] ?? 465);
-      return nodemailer.createTransport!({
-        host: requireEnv("SMTP_HOST"),
-        port,
-        // 465 — implicit TLS, 587/25 — STARTTLS.
-        secure: port === 465,
-        auth: { user: requireEnv("SMTP_USER"), pass: requireEnv("SMTP_PASS") },
-        pool: true,
-        maxConnections: 3,
-      });
-    })();
+      const nodemailer = await loadNodemailer();
+      const cfg = smtpConfig();
+      console.info(
+        `[mailer] SMTP ${cfg.host}:${cfg.port} secure=${cfg.secure} user=${cfg.auth.user.replace(/(.{2}).*(@.*)/, "$1***$2")}`,
+      );
+      return nodemailer.createTransport(cfg);
+    })().catch((e) => {
+      transporterPromise = null; // повторная попытка на следующем запросе
+      throw e;
+    });
   }
   return transporterPromise;
 }
 
 export async function sendMail(payload: MailPayload): Promise<{ messageId?: string }> {
-  const transporter = await getTransporter();
   const fromEmail = process.env["SMTP_FROM"] || process.env["SMTP_USER"] || "";
   const fromName = process.env["SMTP_FROM_NAME"] || "ALMAFORT";
-  return transporter.sendMail({
-    from: `"${fromName}" <${fromEmail}>`,
-    to: payload.to,
-    subject: payload.subject,
-    html: payload.html,
-    text: payload.text ?? stripHtml(payload.html),
-    ...(payload.replyTo ? { replyTo: payload.replyTo } : {}),
-    headers: { "X-Mailer": "ALMAFORT" },
-  });
+  try {
+    const transporter = await getTransporter();
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text ?? stripHtml(payload.html),
+      ...(payload.replyTo ? { replyTo: payload.replyTo } : {}),
+      headers: { "X-Mailer": "ALMAFORT" },
+    });
+    console.info(`[mailer] отправлено -> ${payload.to} (${info?.messageId ?? "no-id"})`);
+    return info;
+  } catch (e) {
+    const err = e as NodeJS.ErrnoException & { command?: string; responseCode?: number; response?: string };
+    console.error(
+      "[mailer] ОШИБКА ОТПРАВКИ",
+      JSON.stringify({
+        to: payload.to,
+        host: process.env["SMTP_HOST"] ?? null,
+        port: process.env["SMTP_PORT"] ?? null,
+        code: err?.code ?? null,
+        command: err?.command ?? null,
+        responseCode: err?.responseCode ?? null,
+        response: err?.response ?? null,
+        message: err?.message ?? String(e),
+      }),
+    );
+    throw e;
+  }
+}
+
+/** Диагностика соединения: используется health-проверкой SMTP. */
+export async function verifySmtp(): Promise<void> {
+  const transporter = (await getTransporter()) as Transporter & { verify?: () => Promise<boolean> };
+  if (transporter.verify) await transporter.verify();
 }
 
 function stripHtml(html: string): string {
