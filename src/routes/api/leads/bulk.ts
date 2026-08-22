@@ -5,6 +5,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { rateLimit } from "@/lib/rate-limit.server";
 import { z } from "zod";
+import { requiredFieldsResponse, zEmail, zInn, zName, zPhone } from "@/lib/required-fields";
 import { pushQuizLead } from "@/lib/quiz-crm.server";
 import { PRODUCTS } from "@/data/catalog";
 
@@ -13,10 +14,11 @@ const schema = z.object({
   product_name: z.string().trim().min(1).max(200),
   base_price: z.number().nonnegative().max(10_000_000).default(0),
   qty: z.number().int().min(1000).max(100_000_000),
-  contact_name: z.string().trim().min(2).max(80),
-  phone: z.string().trim().min(10).max(24),
-  email: z.string().trim().email().max(255).optional().or(z.literal("")),
-  inn: z.string().trim().regex(/^\d{10}$|^\d{12}$/).optional().or(z.literal("")),
+  // Контакты и ИНН обязательны: заявка без них не доходит до расчёта.
+  contact_name: zName,
+  phone: zPhone,
+  email: zEmail,
+  inn: zInn,
   comment: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
@@ -29,6 +31,9 @@ export const Route = createFileRoute("/api/leads/bulk")({
         const raw = await request.json().catch(() => null);
         const parsed = schema.safeParse(raw);
         if (!parsed.success) {
+          const required = ["contact_name", "phone", "email", "inn"];
+          if (parsed.error.issues.some((i) => required.includes(String(i.path[0]))))
+            return requiredFieldsResponse();
           return Response.json({ error: "Проверьте поля формы" }, { status: 400 });
         }
         const d = parsed.data;

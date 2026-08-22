@@ -6,6 +6,9 @@ import { getCabinet } from "@/lib/cabinet.functions";
 import { currentUser } from "@/lib/session";
 import type { Product } from "@/data/catalog";
 import { formatPrice } from "@/lib/pricing";
+import { Field, inputClass } from "@/components/forms/field";
+import { fieldError, isFilledEmail, isFilledInn, isFilledName, isFilledPhone } from "@/lib/required-fields";
+import { sanitizeInn } from "@/lib/inn";
 
 const field =
   "h-11 w-full rounded-sm border border-[#D1D5DB] px-3 text-base outline-none transition-colors focus:border-foreground";
@@ -36,6 +39,13 @@ export function BulkRequestDialog({
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState("");
   const [exceeds, setExceeds] = useState(false);
+  const [tried, setTried] = useState(false);
+
+  // Обязательный минимум по заявке: ФИО, телефон, почта, ИНН.
+  const requiredOk =
+    isFilledName(name) && isFilledPhone(phone) && isFilledEmail(email) && isFilledInn(inn);
+  const err = (kind: "name" | "email" | "phone" | "inn", value: string) =>
+    tried ? fieldError(kind, value) : null;
 
   useEffect(() => {
     if (open && presetComment) setComment((c) => c || presetComment.slice(0, 1000));
@@ -74,8 +84,8 @@ export function BulkRequestDialog({
       setError(`Минимальный объём запроса — ${minQty.toLocaleString("ru-RU")} шт`);
       return;
     }
-    if (name.trim().length < 2 || phone.replace(/\D/g, "").length < 10) {
-      setError("Укажите имя и телефон для связи");
+    if (!requiredOk) {
+      setError("Заполните все обязательные поля: ФИО, телефон, e-mail и ИНН");
       return;
     }
     setState("sending");
@@ -143,6 +153,7 @@ export function BulkRequestDialog({
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault();
+              setTried(true);
               void submit();
             }}
           >
@@ -169,37 +180,58 @@ export function BulkRequestDialog({
             </label>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Имя и компания"
-                className={field}
-              />
-              <input
-                value={phone}
-                onChange={(e) => setPhone(formatPhone(e.target.value))}
-                type="tel"
-                autoComplete="tel"
-                maxLength={18}
-                placeholder="Телефон"
-                inputMode="tel"
-                className={field}
-              />
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="E-mail (необязательно)"
-                inputMode="email"
-                className={field}
-              />
-              <input
-                value={inn}
-                onChange={(e) => setInn(e.target.value.replace(/\D/g, "").slice(0, 12))}
-                placeholder="ИНН (необязательно)"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                className={field}
-              />
+              <Field label="Имя и фамилия" required error={err("name", name)}>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  maxLength={120}
+                  autoComplete="name"
+                  placeholder="Имя и фамилия"
+                  aria-invalid={Boolean(err("name", name))}
+                  className={inputClass(Boolean(err("name", name)))}
+                />
+              </Field>
+              <Field label="Телефон" required error={err("phone", phone)}>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
+                  type="tel"
+                  required
+                  autoComplete="tel"
+                  maxLength={18}
+                  placeholder="+7 (___) ___-__-__"
+                  inputMode="tel"
+                  aria-invalid={Boolean(err("phone", phone))}
+                  className={inputClass(Boolean(err("phone", phone)))}
+                />
+              </Field>
+              <Field label="E-mail" required error={err("email", email)}>
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  required
+                  autoComplete="email"
+                  maxLength={255}
+                  placeholder="name@company.ru"
+                  inputMode="email"
+                  aria-invalid={Boolean(err("email", email))}
+                  className={inputClass(Boolean(err("email", email)))}
+                />
+              </Field>
+              <Field label="ИНН" required error={err("inn", inn)}>
+                <input
+                  value={inn}
+                  onChange={(e) => setInn(sanitizeInn(e.target.value))}
+                  required
+                  placeholder="10 или 12 цифр"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  aria-invalid={Boolean(err("inn", inn))}
+                  className={inputClass(Boolean(err("inn", inn)), "tabular-nums")}
+                />
+              </Field>
             </div>
 
             <textarea

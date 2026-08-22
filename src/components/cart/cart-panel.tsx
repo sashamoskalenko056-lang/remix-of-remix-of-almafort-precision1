@@ -10,6 +10,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { CityInput } from "@/components/cart/city-input";
 import { SwipeToDelete } from "@/components/cart/swipe-to-delete";
 import { InnField, type Party } from "@/components/inn-field";
+import { Field, inputClass } from "@/components/forms/field";
+import { fieldError, isFilledEmail, isFilledInn, isFilledName, isFilledPhone } from "@/lib/required-fields";
 
 import { formatPrice } from "@/lib/pricing";
 import { generateInvoicePdfInBrowser } from "@/lib/pdf-browser";
@@ -147,7 +149,16 @@ export function CartPanel() {
   const [party, setParty] = useState<Party | null>(null);
   const cartReady = Boolean(lines.length) && !pendingQuote;
   const unverified = authed && !verified;
-  const ctaDisabled = !cartReady || !consent || unverified || Boolean(party?.blocked);
+  // Обязательные реквизиты счёта: без ФИО, телефона, почты и ИНН заказ не уйдёт.
+  const requiredOk =
+    isFilledName(form.name) &&
+    isFilledPhone(form.phone) &&
+    isFilledEmail(form.email) &&
+    isFilledInn(inn);
+  const err = (kind: "name" | "email" | "phone" | "inn", value: string) =>
+    triedSubmit ? fieldError(kind, value) : null;
+  // Кнопку не блокируем «молча»: клик подсвечивает незаполненные поля и даёт тост.
+  const ctaDisabled = !cartReady || unverified || Boolean(party?.blocked);
 
   const [submitting, setSubmitting] = useState(false);
   const idemKey = useRef<string | null>(null);
@@ -166,8 +177,12 @@ export function CartPanel() {
       toast.error("Корзина пуста — добавьте позиции или загрузите спецификацию");
       return;
     }
-    if (form.name.trim().length < 2 || form.phone.replace(/\D/g, "").length < 10) {
-      toast.error("Укажите имя и телефон — менеджер должен знать, кому подтверждать отгрузку");
+    if (!consent) {
+      toast.error("Подтвердите согласие на обработку персональных данных");
+      return;
+    }
+    if (!requiredOk) {
+      toast.error("Заполните все обязательные поля: ФИО, телефон, e-mail и ИНН плательщика");
       return;
     }
     if (party?.blocked) {
@@ -208,7 +223,7 @@ export function CartPanel() {
             company: (party?.name || form.company).trim(),
             comment: form.comment.trim().slice(0, 2000),
           },
-          ...(party?.inn ? { inn: party.inn } : {}),
+          inn: party?.inn || inn.replace(/\D/g, ""),
           ...(party?.kpp ? { kpp: party.kpp } : {}),
           city,
           carrier,
@@ -516,48 +531,55 @@ export function CartPanel() {
           <p className="text-sm font-semibold text-foreground">Контакты для счёта</p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Имя и фамилия <span className="font-bold text-[#E52421]">*</span>
-              </span>
-            <input
-              value={form.name}
-              onChange={field("name")}
-              placeholder="Имя и фамилия"
-              className="h-11 rounded-sm border border-[#D1D5DB] px-3.5 py-2.5 text-[13px] leading-[1.3] outline-none transition-colors placeholder:text-[13px] focus:border-primary"
-            />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Телефон <span className="font-bold text-[#E52421]">*</span>
-              </span>
-            <input
-              value={form.phone}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, phone: formatPhone(e.target.value) }))
-              }
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              maxLength={18}
-              placeholder="+7 (___) ___-__-__"
-              className="h-12 rounded-sm border border-[#D1D5DB] px-3.5 py-2.5 text-[13px] leading-[1.3] outline-none transition-colors placeholder:text-[13px] focus:border-primary md:h-11"
-            />
-
-            </label>
-            <input
-              value={form.email}
-              onChange={field("email")}
-              inputMode="email"
-              placeholder="E-mail для счёта"
-              className="h-11 rounded-sm border border-[#D1D5DB] px-3.5 py-2.5 text-[13px] leading-[1.3] outline-none transition-colors placeholder:text-[13px] focus:border-primary"
-            />
-            <input
-              value={form.company}
-              onChange={field("company")}
-              placeholder="Компания"
-              className="h-11 rounded-sm border border-[#D1D5DB] px-3.5 py-2.5 text-[13px] leading-[1.3] outline-none transition-colors placeholder:text-[13px] focus:border-primary"
-            />
+            <Field label="Имя и фамилия" required error={err("name", form.name)}>
+              <input
+                value={form.name}
+                onChange={field("name")}
+                required
+                autoComplete="name"
+                maxLength={120}
+                placeholder="Имя и фамилия"
+                aria-invalid={Boolean(err("name", form.name))}
+                className={inputClass(Boolean(err("name", form.name)))}
+              />
+            </Field>
+            <Field label="Телефон" required error={err("phone", form.phone)}>
+              <input
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: formatPhone(e.target.value) }))}
+                type="tel"
+                required
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={18}
+                placeholder="+7 (___) ___-__-__"
+                aria-invalid={Boolean(err("phone", form.phone))}
+                className={inputClass(Boolean(err("phone", form.phone)))}
+              />
+            </Field>
+            <Field label="E-mail для счёта" required error={err("email", form.email)}>
+              <input
+                value={form.email}
+                onChange={field("email")}
+                type="email"
+                required
+                inputMode="email"
+                autoComplete="email"
+                maxLength={255}
+                placeholder="name@company.ru"
+                aria-invalid={Boolean(err("email", form.email))}
+                className={inputClass(Boolean(err("email", form.email)))}
+              />
+            </Field>
+            <Field label="Компания">
+              <input
+                value={form.company}
+                onChange={field("company")}
+                maxLength={300}
+                placeholder="Подставится по ИНН"
+                className={inputClass(false)}
+              />
+            </Field>
           </div>
 
           <div className="mt-3">
@@ -570,6 +592,8 @@ export function CartPanel() {
                 if (p?.name) setForm((f) => ({ ...f, company: p.name }));
               }}
               label="ИНН плательщика"
+              required
+              invalid={Boolean(err("inn", inn))}
             />
           </div>
 
