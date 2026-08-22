@@ -21,8 +21,8 @@ export function CartSync() {
       const guest = useCart.getState().lines.map((l) => ({ sku: l.sku, quantity: l.quantity }));
       try {
         const res = await merge({ data: { lines: guest } });
-        applyMerged(res.lines);
-        if (res.restored > 0) {
+        applyMerged(res?.lines ?? []);
+        if ((res?.restored ?? 0) > 0) {
           toast.info(`Корзина объединена с сохранённой в кабинете: +${res.restored} поз.`);
         }
       } catch (e) {
