@@ -469,10 +469,18 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           ) : desktopError ? (
             <div className="w-full max-w-[560px] rounded-2xl border border-[#F59E0B]/60 bg-[#F59E0B]/12 p-8 text-left">
+              {preview && (
+                <img
+                  src={preview}
+                  alt="Загруженное фото детали"
+                  className="mb-5 h-40 w-full rounded-xl object-contain"
+                />
+              )}
               <p className="flex items-start gap-3 text-base font-semibold leading-[1.5] text-white">
                 <TriangleAlert className="mt-0.5 size-6 shrink-0 text-[#FBBF24]" strokeWidth={2} />
                 {desktopError}
               </p>
+
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   type="button"
