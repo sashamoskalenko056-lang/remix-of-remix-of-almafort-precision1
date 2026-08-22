@@ -182,6 +182,8 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
       setDenied(false);
       setPaused(false);
       setFrozen(null);
+      setPreview(null);
+
       setWantCamera(false);
       return;
     }
