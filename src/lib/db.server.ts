@@ -10,7 +10,8 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 
-export type Row = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Row = any;
 type Store = Record<string, Row[]>;
 
 const TABLES = [
