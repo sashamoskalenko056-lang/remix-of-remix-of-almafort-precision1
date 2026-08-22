@@ -35,8 +35,15 @@ function supportsWebp(): boolean {
 export async function decodeImageFile(
   file: File,
 ): Promise<{ source: CanvasImageSource; width: number; height: number } | null> {
-  const bitmap = await createImageBitmap(file).catch(() => null);
+  // Телефон отдаёт 12–50 Мп: полноразмерный bitmap съедает память Safari и кадр
+  // молча превращается в пустое полотно. Просим декодер сразу уменьшить картинку.
+  const bitmap =
+    (await createImageBitmap(file, {
+      resizeWidth: DECODE_MAX_SIDE,
+      resizeQuality: "high",
+    } as ImageBitmapOptions).catch(() => null)) ?? (await createImageBitmap(file).catch(() => null));
   if (bitmap) return { source: bitmap, width: bitmap.width, height: bitmap.height };
+
 
   const url = URL.createObjectURL(file);
   try {
