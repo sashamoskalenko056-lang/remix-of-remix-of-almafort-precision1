@@ -171,7 +171,7 @@ export async function markEmailVerified(userId: string) {
 
 /* ── одноразовые ссылки (подтверждение почты и сброс пароля) ───────── */
 
-export type LinkKind = "recovery" | "verify";
+export type LinkKind = "recovery" | "verify" | "magiclink";
 
 export async function createActionToken(userId: string, kind: LinkKind): Promise<string> {
   const token = randomBytes(32).toString("base64url");
