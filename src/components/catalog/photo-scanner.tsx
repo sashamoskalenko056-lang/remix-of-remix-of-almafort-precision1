@@ -681,10 +681,24 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
           </svg>
 
           {shake && (
-            <div className="pointer-events-none absolute left-1/2 top-[16%] z-10 w-[86%] max-w-[420px] -translate-x-1/2 rounded-md bg-black/80 px-5 py-3 text-center text-sm font-semibold text-white">
-              {shake}
+            <div className="pointer-events-none absolute left-1/2 top-[16%] z-10 flex w-[86%] max-w-[420px] -translate-x-1/2 items-center gap-3 rounded-md bg-black/80 px-5 py-3 text-left text-sm font-semibold text-white">
+              {preview && (
+                <img
+                  src={preview}
+                  alt="Загруженное фото детали"
+                  className="size-12 shrink-0 rounded-md object-cover"
+                />
+              )}
+              <span>{shake}</span>
             </div>
           )}
+          {/* Ошибка сети/сервера в мобильном режиме: без явного текста экран «висит». */}
+          {fatal && !busy && (
+            <div className="absolute inset-x-4 top-[10%] z-20 rounded-md bg-[#F59E0B] p-4 text-left text-sm font-semibold leading-[1.5] text-[oklch(0.25_0.05_70)]">
+              {fatal}
+            </div>
+          )}
+
 
           {/* Out-of-Distribution: ботинок, палец, гаечный ключ */}
           {result?.scenario === "invalid" && (
