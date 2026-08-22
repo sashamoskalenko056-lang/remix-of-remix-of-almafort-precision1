@@ -22,15 +22,16 @@ async function loadIdentity(): Promise<AdminIdentity> {
 export const Route = createFileRoute("/_authenticated/admin-alma-secure-2026")({
   ssr: false,
   beforeLoad: async () => {
-    // RBAC-гейт: у не-сотрудника раздела просто «не существует» — отдаём 404,
-    // чтобы сканеры не получали подтверждение, что админка тут есть.
+    // RBAC-гейт: обычного снабженца возвращаем в его кабинет, роль проверяет
+    // бэкенд (владелец = ADMIN_OWNER_EMAIL), клиент лишь исполняет решение.
     try {
       const me = await loadIdentity();
-      if (!me.roles.length) throw notFound();
+      if (!me.roles.length) throw redirect({ to: "/cabinet", replace: true });
       return { adminRoles: me.roles, adminEmail: me.email };
-    } catch {
+    } catch (error) {
       cached = null;
-      throw notFound();
+      if (isRedirect(error)) throw error;
+      throw redirect({ to: "/cabinet", replace: true });
     }
   },
   pendingMs: 0,
