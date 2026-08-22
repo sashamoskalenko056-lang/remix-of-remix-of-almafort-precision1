@@ -1,6 +1,23 @@
 import { createFileRoute, Link, Outlet, notFound, useRouterState } from "@tanstack/react-router";
 import { adminMe } from "@/lib/admin.functions";
 import { ADMIN_BASE, ROLE_LABEL, can, type AdminRole } from "@/lib/admin";
+import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Кэш RBAC-проверки: без него каждый переход между вкладками админки
+ * блокировал рендер на круговом запросе ролей к бэкенду.
+ */
+type AdminIdentity = { roles: AdminRole[]; email: string | null };
+let cached: { at: number; value: AdminIdentity } | null = null;
+const TTL = 60_000;
+
+async function loadIdentity(): Promise<AdminIdentity> {
+  if (cached && Date.now() - cached.at < TTL) return cached.value;
+  const me = await adminMe();
+  const value: AdminIdentity = { roles: me.roles as AdminRole[], email: me.email };
+  cached = { at: Date.now(), value };
+  return value;
+}
 
 export const Route = createFileRoute("/_authenticated/admin-alma-secure-2026")({
   ssr: false,
@@ -8,13 +25,26 @@ export const Route = createFileRoute("/_authenticated/admin-alma-secure-2026")({
     // RBAC-гейт: у не-сотрудника раздела просто «не существует» — отдаём 404,
     // чтобы сканеры не получали подтверждение, что админка тут есть.
     try {
-      const me = await adminMe();
+      const me = await loadIdentity();
       if (!me.roles.length) throw notFound();
-      return { adminRoles: me.roles as AdminRole[], adminEmail: me.email };
+      return { adminRoles: me.roles, adminEmail: me.email };
     } catch {
+      cached = null;
       throw notFound();
     }
   },
+  pendingMs: 0,
+  pendingComponent: () => (
+    <div className="min-h-screen bg-muted/30">
+      <div className="border-b bg-background px-6 py-4">
+        <Skeleton className="h-6 w-72" />
+      </div>
+      <div className="mx-auto max-w-[1400px] space-y-4 px-6 py-8">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-64 w-full rounded-md" />
+      </div>
+    </div>
+  ),
   notFoundComponent: () => (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
       <h1 className="text-4xl font-bold">404</h1>

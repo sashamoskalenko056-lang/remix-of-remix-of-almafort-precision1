@@ -30,6 +30,9 @@ function OrdersRegistry() {
           ...(from ? { from: new Date(from).toISOString() } : {}),
         },
       }),
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   const pages = data ? Math.ceil(data.count / data.pageSize) : 0;
