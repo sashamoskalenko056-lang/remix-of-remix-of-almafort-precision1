@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Building2,
@@ -23,6 +23,7 @@ import { InnField, type Party } from "@/components/inn-field";
 import { STAGES, TIER_META, stageIndex, tierProgress, type LoyaltyTier } from "@/lib/loyalty";
 import { addCompanyByInn, getCabinet, removeCompany, repeatOrder } from "@/lib/cabinet.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { isAuthError } from "@/lib/auth-error";
 import { COMPANY } from "@/lib/company";
 import { useCart } from "@/store/cart-store";
 
@@ -57,7 +58,20 @@ function CabinetPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["cabinet"],
     queryFn: () => fetchCabinet(),
+    // Истёкшую сессию бессмысленно ретраить — уводим на /auth.
+    retry: (count, err) => !isAuthError(err) && count < 2,
   });
+
+  // 401 = токен протух: чистим сессию и отправляем на вход, а не показываем заглушку.
+  useEffect(() => {
+    if (!isAuthError(error)) return;
+    void (async () => {
+      await qc.cancelQueries();
+      qc.clear();
+      await supabase.auth.signOut();
+      void navigate({ to: "/auth", replace: true });
+    })();
+  }, [error, qc, navigate]);
 
   const [inn, setInn] = useState("");
   const [party, setParty] = useState<Party | null>(null);
@@ -125,7 +139,14 @@ function CabinetPage() {
   if (error || !data) {
     return (
       <Shell>
-        <p className="text-sm text-primary">Не удалось загрузить кабинет. Обновите страницу.</p>
+        <p className="text-sm text-primary">Не удалось загрузить кабинет.</p>
+        <button
+          type="button"
+          onClick={() => void qc.invalidateQueries({ queryKey: ["cabinet"] })}
+          className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+        >
+          <RefreshCw className="size-4" /> Повторить
+        </button>
       </Shell>
     );
   }
