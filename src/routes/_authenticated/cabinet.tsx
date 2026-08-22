@@ -18,6 +18,7 @@ import { SiteHeader } from "@/components/site-header";
 import { BackLink } from "@/components/back-link";
 import { formatPrice } from "@/lib/pricing";
 import { innHint, isValidInn, sanitizeInn } from "@/lib/inn";
+import { BackupPassword } from "@/components/cabinet/backup-password";
 import { InnField, type Party } from "@/components/inn-field";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -418,6 +419,8 @@ function CabinetPage() {
 
 
           </div>
+
+          <BackupPassword />
         </aside>
       </div>
     </Shell>

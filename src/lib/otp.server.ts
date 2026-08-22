@@ -105,7 +105,7 @@ export async function requestOtp(emailRaw: string, ip: string): Promise<RequestR
     await sendMail({ to: email, subject: tpl.subject, html: tpl.html });
   } catch (e) {
     // На стенде без SMTP код выводим в лог сервера, чтобы вход был возможен.
-    if (!process.env["SMTP_HOST"]) {
+    if (!process.env["SMTP_USER"] || !process.env["SMTP_PASS"]) {
       console.warn(`[otp] SMTP не настроен, код для ${email}: ${code}`);
     } else {
       throw e;
