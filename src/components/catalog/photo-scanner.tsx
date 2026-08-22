@@ -82,6 +82,9 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
   const [reverse, setReverse] = useState(false);
   /** Замороженный кадр: показываем поверх видео, пока думает нейросеть. */
   const [frozen, setFrozen] = useState<string | null>(null);
+  /** Превью выбранного/снятого файла: показываем всегда, независимо от результата анализа. */
+  const [preview, setPreview] = useState<string | null>(null);
+
   const [desktop, setDesktop] = useState(false);
   /** На ПК стартуем с зоны Drag & Drop, камеру включаем только по явной просьбе. */
   const [wantCamera, setWantCamera] = useState(false);
