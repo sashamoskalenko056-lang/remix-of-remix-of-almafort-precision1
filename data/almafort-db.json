@@ -17,6 +17,15 @@
       "password_hash": "scrypt:18feba0b4a610c03da8a58e9893b4c11:7720c55665fd401d36695f3a8b6cea8542698bd913f840a091883d2f2f9eb827e2600c346176a0e7e7df2a5792ed3ab56230734681cfabc9768147c57a26db30",
       "full_name": "Александр Москаленко",
       "email_verified": false
+    },
+    {
+      "id": "fd144f43-93c2-47c7-b8b9-53770b4b0c42",
+      "created_at": "2026-08-22T16:37:48.683Z",
+      "updated_at": "2026-08-22T16:37:48.683Z",
+      "email": "qa-otp@example.com",
+      "password_hash": "scrypt:9eff701cae12f4adb95482f00c5615fc:15084adeba04d129992c72e7d3ad7091b1250036e1a65e3840821eb3e47112df0ad9d009843287fc875cb4230e6a7f87517584704e93dbccfcb6c051241226a4",
+      "full_name": null,
+      "email_verified": true
     }
   ],
   "profiles": [
@@ -32,6 +41,13 @@
       "created_at": "2026-08-22T14:34:50.327Z",
       "updated_at": "2026-08-22T14:34:50.327Z",
       "full_name": "Александр Москаленко",
+      "phone": null
+    },
+    {
+      "id": "fd144f43-93c2-47c7-b8b9-53770b4b0c42",
+      "created_at": "2026-08-22T16:37:48.686Z",
+      "updated_at": "2026-08-22T16:37:48.686Z",
+      "full_name": null,
       "phone": null
     }
   ],
@@ -147,18 +163,6 @@
       "used": false
     }
   ],
-  "otp_codes": [
-    {
-      "id": "9d18a8fb-b8dd-47ba-8061-5b5d844b8c94",
-      "created_at": "2026-08-22T16:37:38.994Z",
-      "updated_at": "2026-08-22T16:37:38.994Z",
-      "email": "qa-otp@example.com",
-      "ip": "unknown",
-      "salt": "153e53d2f84415c756efcc1ce3e56ef8",
-      "code_hash": "fd5e87e815d9c6aa3ba87fec69cdc55e72177c1e64c6b54454a3a41e02e28f0840b228d0aa857c6cfcc4cd79095a7c3db1dc12f5f1c4f3f6b8f53fa6928796c1",
-      "attempts": 0,
-      "expires_at": "2026-08-22T16:42:38.994Z"
-    }
-  ],
+  "otp_codes": [],
   "crm_queue": []
 }
