@@ -151,7 +151,6 @@ function AuthPage() {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/cabinet`,
             data: { full_name: name.trim() },
           },
         });
