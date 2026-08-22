@@ -28,6 +28,11 @@ const PAGE = 20;
 export const adminMe = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
+    // Владелец платформы (ADMIN_OWNER_EMAIL) получает роль owner при первом визите,
+    // остальные снабженцы уходят обратно в свой кабинет.
+    const { ensureOwnerRole, findUserById } = await import("@/lib/auth.server");
+    const user = await findUserById(context.userId);
+    if (user) await ensureOwnerRole(user);
     const roles = await rolesOf(context.userId);
     return { roles, email: context.email };
   });

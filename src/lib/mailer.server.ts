@@ -182,12 +182,12 @@ function button(href: string, label: string): string {
 
 export function recoveryEmail(link: string): { subject: string; html: string } {
   return {
-    subject: `${BRAND} — восстановление пароля`,
+    subject: `Восстановление доступа к ${BRAND}`,
     html: layout(
-      "Восстановление пароля",
-      `<h1 style="margin:0 0 12px;font-size:20px;">Смена пароля в кабинете</h1>
-       <p style="margin:0;">Мы получили запрос на восстановление доступа к B2B-кабинету ${BRAND}. Ссылка действует ограниченное время и срабатывает один раз.</p>
-       ${button(link, "Задать новый пароль")}`,
+      "Восстановление доступа",
+      `<h1 style="margin:0 0 12px;font-size:20px;">Восстановление сессии</h1>
+       <p style="margin:0;">Запрошено восстановление сессии. Для безопасного входа перейдите по уникальной одноразовой ссылке. Ссылка сгорит через 15 минут.</p>
+       ${button(link, "Войти безопасно")}`,
     ),
   };
 }
