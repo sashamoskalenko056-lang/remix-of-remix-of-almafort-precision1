@@ -37,7 +37,7 @@ function CartPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader />
-      <main className="w-full flex-1 mx-auto max-w-[1100px] px-5 pb-[calc(var(--tabbar-h)+var(--cart-total-h)+var(--safe-b)+1.25rem)] pt-10 md:pb-24 lg:px-10">
+      <main className="w-full flex-1 mx-auto max-w-[1100px] px-5 pb-[calc(var(--tabbar-h)+var(--cart-total-h)+var(--safe-b)+1.5rem)] pt-10 md:pb-24 lg:px-10">
         <BackLink fallback="/catalog" label="Назад в каталог" className="mb-6" />
         <header className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground lg:text-[40px]">
