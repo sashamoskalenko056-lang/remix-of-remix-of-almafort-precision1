@@ -1,11 +1,11 @@
 {
-  "version": 1,
   "asset_id": "dab7a768-668e-45b5-b97d-d395ba66c796",
-  "project_id": "38726aa6-33e5-40f9-b11f-2bb8afc73001",
-  "url": "/__l5e/assets-v1/dab7a768-668e-45b5-b97d-d395ba66c796/krepss-sertifikat.pdf",
-  "r2_key": "a/v1/38726aa6-33e5-40f9-b11f-2bb8afc73001/dab7a768-668e-45b5-b97d-d395ba66c796/krepss-sertifikat.pdf",
-  "original_filename": "krepss-sertifikat.pdf",
-  "size": 1497054,
   "content_type": "application/pdf",
-  "created_at": "2026-08-20T18:39:30Z"
+  "created_at": "2026-08-20T18:39:30Z",
+  "original_filename": "krepss-sertifikat.pdf",
+  "project_id": "95948bea-cd76-41bd-8a77-8834c54267fa",
+  "r2_key": "a/v1/95948bea-cd76-41bd-8a77-8834c54267fa/dab7a768-668e-45b5-b97d-d395ba66c796/krepss-sertifikat.pdf",
+  "size": 1497054,
+  "url": "/__l5e/assets-v1/dab7a768-668e-45b5-b97d-d395ba66c796/krepss-sertifikat.pdf",
+  "version": 1
 }

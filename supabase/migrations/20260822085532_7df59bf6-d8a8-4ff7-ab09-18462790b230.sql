@@ -1,1 +1,0 @@
-REVOKE EXECUTE ON FUNCTION public.link_asset_group(text, text, text, jsonb, text[]) FROM authenticated, anon, PUBLIC;

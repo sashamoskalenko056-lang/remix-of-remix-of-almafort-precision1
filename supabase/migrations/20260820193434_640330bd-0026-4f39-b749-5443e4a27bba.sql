@@ -1,1 +1,0 @@
-insert into public.user_roles (user_id, role) values ('9a7a103f-d0e6-41d4-8fe0-19a7459d76b7','owner') on conflict (user_id, role) do nothing;
