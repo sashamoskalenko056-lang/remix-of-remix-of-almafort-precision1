@@ -133,22 +133,20 @@ export const Route = createFileRoute("/api/public/send-mail")({
           await sendMail({ to: body.email, ...mail });
           return json(request, { ok: true });
         } catch (e) {
-          console.error("[send-mail]", e);
+          const err = e as NodeJS.ErrnoException & { command?: string; response?: string };
+          console.error(
+            "[send-mail] сбой отправки:",
+            JSON.stringify({
+              type: body.type,
+              code: err?.code ?? null,
+              command: err?.command ?? null,
+              response: err?.response ?? null,
+              message: err?.message ?? String(e),
+            }),
+          );
           return json(request, { error: "Не удалось отправить письмо" }, 500);
         }
       },
     },
   },
 });
-
-/** Ссылка обязана вести на боевой хост, а не на служебный домен Supabase-редиректа. */
-function forceOurHost(actionLink: string): string {
-  try {
-    const url = new URL(actionLink);
-    const redirect = url.searchParams.get("redirect_to");
-    if (redirect) url.searchParams.set("redirect_to", `${siteUrl()}/reset-password`);
-    return url.toString();
-  } catch {
-    return actionLink;
-  }
-}

@@ -33,9 +33,25 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
-  // Ссылка восстановления отдаёт временную сессию — только после неё меняем пароль.
+  // Письмо ведёт на наш хост со ссылкой ?token_hash=...&type=recovery —
+  // обмениваем одноразовый токен на временную сессию прямо здесь.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setReady(Boolean(data.session)));
+    const url = new URL(window.location.href);
+    const tokenHash = url.searchParams.get("token_hash");
+    void (async () => {
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash });
+        url.searchParams.delete("token_hash");
+        url.searchParams.delete("type");
+        window.history.replaceState(null, "", url.pathname + url.search);
+        if (!error) {
+          setReady(true);
+          return;
+        }
+      }
+      const { data } = await supabase.auth.getSession();
+      setReady(Boolean(data.session));
+    })();
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || session) setReady(true);
     });
