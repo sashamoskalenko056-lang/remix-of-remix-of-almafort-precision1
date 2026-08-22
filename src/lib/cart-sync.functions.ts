@@ -29,7 +29,7 @@ export const mergeSavedCart = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { db, userId } = context;
-    const { data: row } = await supabase
+    const { data: row } = await db
       .from("saved_carts")
       .select("lines")
       .eq("user_id", userId)
@@ -38,7 +38,7 @@ export const mergeSavedCart = createServerFn({ method: "POST" })
     const stored = z.array(lineSchema).catch([]).parse(row?.lines ?? []);
     const merged = mergeCartLines(stored, data.lines);
 
-    const { error } = await supabase
+    const { error } = await db
       .from("saved_carts")
       .upsert({ user_id: userId, lines: merged }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
