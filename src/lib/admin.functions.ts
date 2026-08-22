@@ -698,35 +698,34 @@ export const adminSetStaffRole = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireRole(context.userId, ["owner"]);
-    const { data: profile } = await context.db
-      .from("profiles")
+    const { data: account } = await context.db
+      .from("users")
       .select("id")
-      .eq("email", data.email)
+      .eq("email", data.email.trim().toLowerCase())
       .maybeSingle();
-    if (!profile) throw new Error("Пользователь с такой почтой не зарегистрирован");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!account) throw new Error("Пользователь с такой почтой не зарегистрирован");
     if (data.revoke && data.role === "owner") {
       // Защита от самоблокировки: последнего владельца снять нельзя.
-      const { count } = await supabaseAdmin
+      const { data: owners } = await context.db
         .from("user_roles")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("role", "owner");
-      if ((count ?? 0) <= 1) {
+      if (owners.length <= 1) {
         throw new Error(
           "Нельзя отозвать роль у единственного владельца — сначала назначьте второго владельца.",
         );
       }
     }
     if (data.revoke) {
-      await supabaseAdmin
+      await context.db
         .from("user_roles")
         .delete()
-        .eq("user_id", profile.id)
+        .eq("user_id", account.id)
         .eq("role", data.role);
     } else {
-      await supabaseAdmin
+      await context.db
         .from("user_roles")
-        .upsert({ user_id: profile.id, role: data.role } as never, { onConflict: "user_id,role" });
+        .upsert({ user_id: account.id, role: data.role }, { onConflict: "user_id,role" });
     }
     await logAdmin(
       context.userId,
@@ -782,17 +781,25 @@ export const adminLinkAssetGroup = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireRole(context.userId, ["owner", "content"]);
-    // EXECUTE на link_asset_group отозван у роли authenticated: вызов идёт
-    // только с сервера после проверки роли выше.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: gid, error } = await supabaseAdmin.rpc("link_asset_group", {
-      _slug: data.slug,
-      _title: data.title,
-      _description: data.description,
-      _images: data.images,
-      _skus: data.skus,
-    });
+    // Пакет контента и связи Many-to-One переустанавливаются одной операцией.
+    const { data: group, error } = await context.db
+      .from("asset_groups")
+      .upsert(
+        {
+          slug: data.slug,
+          title: data.title,
+          description: data.description,
+          images: data.images,
+        },
+        { onConflict: "slug" },
+      )
+      .single();
     if (error) throw new Error(error.message);
+    const gid = group["id"] as string;
+    await context.db.from("product_asset_links").delete().eq("group_id", gid);
+    for (const sku of data.skus) {
+      await context.db.from("product_asset_links").upsert({ sku, group_id: gid }, { onConflict: "sku" });
+    }
     await logAdmin(
       context.userId,
       context.email,
