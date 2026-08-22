@@ -507,23 +507,8 @@ export function CartPanel() {
 
         </div>
 
-        {!authed && (
-          <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
-            <p className="text-sm font-semibold text-foreground">
-              Войдите в B2B-кабинет перед оформлением
-            </p>
-            <p className="mt-1.5 text-xs leading-[1.5] text-muted-foreground">
-              Реквизиты подставятся автоматически, заказ попадёт в трекинг, а грейд закрепит оптовую
-              колонку цен на весь объём.
-            </p>
-            <a
-              href="/auth"
-              className="mt-3 inline-flex items-center rounded-sm border border-primary px-4 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-            >
-              Войти или создать кабинет
-            </a>
-          </div>
-        )}
+
+
 
         {/* Правая колонка: контакты и итог идут одной стопкой, чтобы итог не уезжал под доставку */}
         <div className="flex flex-col gap-6 lg:col-start-2 lg:row-start-1">
