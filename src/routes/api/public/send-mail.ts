@@ -108,8 +108,11 @@ export const Route = createFileRoute("/api/public/send-mail")({
               options: { redirectTo: `${siteUrl()}/reset-password` },
             });
             // Не раскрываем, зарегистрирован ли адрес.
-            if (error || !data?.properties?.action_link) return json(request, { ok: true });
-            const link = forceOurHost(data.properties.action_link);
+            if (error) console.error("[send-mail] generateLink:", error.message);
+            const hashed = data?.properties?.hashed_token;
+            if (error || !hashed) return json(request, { ok: true });
+            // Ссылка строится только от PUBLIC_SITE_URL: ни одного стороннего домена в письме.
+            const link = `${siteUrl()}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
             const mail = recoveryEmail(link);
             await sendMail({ to: body.email, ...mail });
             return json(request, { ok: true });
