@@ -82,6 +82,9 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
   const [reverse, setReverse] = useState(false);
   /** Замороженный кадр: показываем поверх видео, пока думает нейросеть. */
   const [frozen, setFrozen] = useState<string | null>(null);
+  /** Превью выбранного/снятого файла: показываем всегда, независимо от результата анализа. */
+  const [preview, setPreview] = useState<string | null>(null);
+
   const [desktop, setDesktop] = useState(false);
   /** На ПК стартуем с зоны Drag & Drop, камеру включаем только по явной просьбе. */
   const [wantCamera, setWantCamera] = useState(false);
@@ -101,6 +104,10 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
     setCamError(null);
     setPaused(false);
     try {
+      // Без HTTPS (или localhost) браузер вообще не спрашивает разрешение на камеру.
+      if (typeof window !== "undefined" && window.isSecureContext === false) {
+        throw Object.assign(new Error("insecure"), { name: "InsecureContextError" });
+      }
       if (!navigator.mediaDevices?.getUserMedia) {
         throw Object.assign(new Error("no api"), { name: "NotFoundError" });
       }
@@ -110,6 +117,7 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
         audio: false,
       });
       streamRef.current = stream;
+
 
       const track = stream.getVideoTracks()[0];
       if (track && facingRef.current === "environment") {
@@ -145,10 +153,13 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
       setCamError(
         isDenied
           ? "Доступ к камере запрещён системными настройками"
-          : name === "NotReadableError"
-            ? "Камера занята другим приложением"
-            : "Камера не обнаружена",
+          : name === "InsecureContextError"
+            ? "Камера работает только по защищённому соединению (HTTPS)"
+            : name === "NotReadableError"
+              ? "Камера занята другим приложением"
+              : "Камера не обнаружена",
       );
+
     }
   }, []);
 
@@ -171,6 +182,8 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
       setDenied(false);
       setPaused(false);
       setFrozen(null);
+      setPreview(null);
+
       setWantCamera(false);
       return;
     }
@@ -263,6 +276,7 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
     setFatal(null);
     setShake(null);
     setResult(null);
+    setPreview(null);
     const heic = /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
     if (!file.type.startsWith("image/") && !heic) {
       const m = "Нужен файл изображения: JPG, PNG, WEBP или HEIC";
@@ -283,6 +297,10 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
     // Сжимаем на клиенте: 800×800 WebP вместо 4K/8 МБ — иначе на 3G ответа не дождаться.
     const prepared = compress(decoded.source, decoded.width, decoded.height);
     setFrozen(prepared.dataUrl);
+    // Превью загруженного файла живёт независимо от статуса анализа:
+    // клиент должен видеть, что именно он отправил, даже при ошибке.
+    setPreview(prepared.dataUrl);
+
     const stats = frameStats(decoded.source, decoded.width, decoded.height);
     const hint = lowLightHint(stats);
     if (hint) {
@@ -322,14 +340,17 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
 
     const prepared = compress(canvas, side, side);
     setFrozen(prepared.dataUrl);
+    setPreview(prepared.dataUrl);
     await analyze(prepared.dataUrl);
   };
 
   const retry = () => {
     setResult(null);
     setFrozen(null);
+    setPreview(null);
     void start();
   };
+
 
   const restart = () => {
     setPaused(false);
@@ -410,9 +431,16 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
         ref={fileRef}
         type="file"
         accept="image/*,.heic,.heif"
-        className="hidden"
-        onChange={(e) => void pickFile(e.target.files?.[0])}
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          // Сбрасываем значение: иначе повторный выбор того же файла
+          // не вызывает onChange и кнопка выглядит «мёртвой».
+          e.target.value = "";
+          void pickFile(file);
+        }}
       />
+
 
       {/* ПК без камеры: зона Drag & Drop, лоадер анализа и явный Error State. */}
       {cameraMode === false && !showSheet && (
@@ -441,10 +469,18 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           ) : desktopError ? (
             <div className="w-full max-w-[560px] rounded-2xl border border-[#F59E0B]/60 bg-[#F59E0B]/12 p-8 text-left">
+              {preview && (
+                <img
+                  src={preview}
+                  alt="Загруженное фото детали"
+                  className="mb-5 h-40 w-full rounded-xl object-contain"
+                />
+              )}
               <p className="flex items-start gap-3 text-base font-semibold leading-[1.5] text-white">
                 <TriangleAlert className="mt-0.5 size-6 shrink-0 text-[#FBBF24]" strokeWidth={2} />
                 {desktopError}
               </p>
+
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   type="button"
@@ -466,6 +502,8 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
                     setShake(null);
                     setFatal(null);
                     setFrozen(null);
+                    setPreview(null);
+
                   }}
                   className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-full border border-white/30 px-6 text-sm font-semibold text-white"
                 >
@@ -507,10 +545,24 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
 
       {cameraMode && camError && !showSheet && (
         <div className="flex h-full w-full flex-col items-center justify-center gap-5 px-6 text-center">
-          <span className="grid size-16 place-items-center rounded-full bg-white/10 text-white">
-            <CameraOff className="size-8" strokeWidth={1.5} />
-          </span>
+          {preview ? (
+            <img
+              src={preview}
+              alt="Загруженное фото детали"
+              className="h-40 w-40 rounded-xl object-cover"
+            />
+          ) : (
+            <span className="grid size-16 place-items-center rounded-full bg-white/10 text-white">
+              <CameraOff className="size-8" strokeWidth={1.5} />
+            </span>
+          )}
+          {(fatal ?? shake) && (
+            <p className="max-w-[46ch] rounded-md bg-[#F59E0B]/15 px-4 py-3 text-sm font-semibold leading-[1.5] text-[#FBBF24]">
+              {fatal ?? shake}
+            </p>
+          )}
           <p className="max-w-[46ch] text-base leading-[1.6] text-white/85">
+
             {denied
               ? "Доступ к камере запрещён системными настройками. Чтобы ИИ смог распознать деталь, разрешите доступ к камере в настройках браузера либо загрузите готовое фото из галереи."
               : `${camError}. Загрузите фото из галереи — распознавание работает и по снимку.`}
@@ -629,10 +681,24 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
           </svg>
 
           {shake && (
-            <div className="pointer-events-none absolute left-1/2 top-[16%] z-10 w-[86%] max-w-[420px] -translate-x-1/2 rounded-md bg-black/80 px-5 py-3 text-center text-sm font-semibold text-white">
-              {shake}
+            <div className="pointer-events-none absolute left-1/2 top-[16%] z-10 flex w-[86%] max-w-[420px] -translate-x-1/2 items-center gap-3 rounded-md bg-black/80 px-5 py-3 text-left text-sm font-semibold text-white">
+              {preview && (
+                <img
+                  src={preview}
+                  alt="Загруженное фото детали"
+                  className="size-12 shrink-0 rounded-md object-cover"
+                />
+              )}
+              <span>{shake}</span>
             </div>
           )}
+          {/* Ошибка сети/сервера в мобильном режиме: без явного текста экран «висит». */}
+          {fatal && !busy && (
+            <div className="absolute inset-x-4 top-[10%] z-20 rounded-md bg-[#F59E0B] p-4 text-left text-sm font-semibold leading-[1.5] text-[oklch(0.25_0.05_70)]">
+              {fatal}
+            </div>
+          )}
+
 
           {/* Out-of-Distribution: ботинок, палец, гаечный ключ */}
           {result?.scenario === "invalid" && (
