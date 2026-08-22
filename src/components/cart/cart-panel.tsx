@@ -744,43 +744,6 @@ export function CartPanel() {
       </section>
 
 
-      {/* Липкая нижняя панель оформления: итог и CTA всегда под большим пальцем */}
-      {lines.length > 0 && (
-        <div className="above-tabbar fixed inset-x-0 z-[45] border-t border-border bg-card/97 px-4 py-3 shadow-[0_-8px_24px_oklch(0_0_0/0.1)] backdrop-blur md:hidden"
-          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Итого</p>
-              <p className="truncate text-lg font-extrabold tabular-nums text-foreground">
-                {money(total)}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setTriedSubmit(true);
-                if (ctaDisabled) {
-                  toast.error(
-                    !consent
-                      ? "Подтвердите согласие на обработку данных"
-                      : unverified
-                        ? "Подтвердите почту, чтобы оформить заказ"
-                        : "Дождитесь расчёта доставки",
-                  );
-                  return;
-                }
-                void submitOrder();
-              }}
-              disabled={submitting}
-              className="flex h-12 min-w-[60%] items-center justify-center gap-2 rounded-md bg-[#10B981] px-5 text-[15px] font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
-            >
-              {submitting && <Loader2 className="size-4 animate-spin" strokeWidth={2} />}
-              {submitting ? "Отправляем…" : "Оформить заказ"}
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
 
