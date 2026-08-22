@@ -162,11 +162,14 @@ function AuthPage() {
       }
 
       if (mode === "forgot") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/reset-password`,
+        // Письмо уходит через собственный SMTP ALMAFORT, а не через почтовик бэкенда.
+        const res = await fetch("/api/public/send-mail", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type: "recovery", email: email.trim() }),
         });
-        if (error) {
-          fail(error);
+        if (!res.ok) {
+          fail(new Error("Не удалось отправить письмо. Повторите позже."));
           return;
         }
         setSentKind("reset");
