@@ -8,6 +8,15 @@
       "password_hash": "scrypt:79411f99e7e84d95298850d00530de36:12b1050d158401c24fbba4870b26f7cf79812501e05c37ecdade697e6cf8ff286efb28c605fad964461dfea3f7970676d2ba5b9dded2521e7b1f6befb6345da1",
       "full_name": null,
       "email_verified": false
+    },
+    {
+      "id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
+      "created_at": "2026-08-22T14:34:50.323Z",
+      "updated_at": "2026-08-22T14:34:50.323Z",
+      "email": "sashamoskalenko0@gmail.com",
+      "password_hash": "scrypt:18feba0b4a610c03da8a58e9893b4c11:7720c55665fd401d36695f3a8b6cea8542698bd913f840a091883d2f2f9eb827e2600c346176a0e7e7df2a5792ed3ab56230734681cfabc9768147c57a26db30",
+      "full_name": "Александр Москаленко",
+      "email_verified": false
     }
   ],
   "profiles": [
@@ -16,6 +25,13 @@
       "created_at": "2026-08-22T13:55:52.666Z",
       "updated_at": "2026-08-22T13:55:52.666Z",
       "full_name": null,
+      "phone": null
+    },
+    {
+      "id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
+      "created_at": "2026-08-22T14:34:50.327Z",
+      "updated_at": "2026-08-22T14:34:50.327Z",
+      "full_name": "Александр Москаленко",
       "phone": null
     }
   ],
@@ -29,6 +45,13 @@
       "created_at": "2026-08-22T13:55:52.875Z",
       "updated_at": "2026-08-22T13:55:54.893Z",
       "user_id": "0c9f1106-b619-4185-b3cc-0c04beb23a53",
+      "lines": []
+    },
+    {
+      "id": "fbf6c744-4069-4a56-83b3-86c803ea1774",
+      "created_at": "2026-08-22T14:34:50.592Z",
+      "updated_at": "2026-08-22T14:35:07.221Z",
+      "user_id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
       "lines": []
     }
   ],
@@ -93,7 +116,15 @@
   "asset_groups": [],
   "product_asset_links": [],
   "product_overrides": [],
-  "user_roles": [],
+  "user_roles": [
+    {
+      "id": "45200a94-9e3c-41a3-8eb0-71e6c98bfe22",
+      "created_at": "2026-08-22T14:34:50.333Z",
+      "updated_at": "2026-08-22T14:34:50.333Z",
+      "user_id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
+      "role": "owner"
+    }
+  ],
   "password_resets": [
     {
       "id": "f19e8740-6bc6-4b4b-a5dd-ebad6cac10d0",
@@ -103,6 +134,16 @@
       "kind": "verify",
       "token": "HSjqMsdj3yPWCIQ61tnr9Mx4dqeY6rcW_RK1UjAP-cA",
       "expires_at": "2026-08-22T14:55:52.676Z",
+      "used": false
+    },
+    {
+      "id": "aa22d546-8812-48cf-b22d-3f556c150654",
+      "created_at": "2026-08-22T14:34:50.336Z",
+      "updated_at": "2026-08-22T14:34:50.336Z",
+      "user_id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
+      "kind": "verify",
+      "token": "d1_78XrPE9tU1PTZNb1R5R7_RfzpgajbguZv58xJE0w",
+      "expires_at": "2026-08-22T15:34:50.335Z",
       "used": false
     }
   ],

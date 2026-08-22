@@ -205,11 +205,17 @@ export async function rolesOfUser(userId: string): Promise<string[]> {
 }
 
 /**
- * Первичный владелец: почта из OWNER_EMAIL получает роль owner при первом входе,
- * поэтому админка доступна сразу после деплоя без ручных SQL-команд.
+ * Первичный владелец: почта из ADMIN_OWNER_EMAIL (или OWNER_EMAIL) получает
+ * роль owner при первом входе — админка доступна сразу после деплоя.
  */
 export async function ensureOwnerRole(user: AuthUser) {
-  const owner = (process.env["OWNER_EMAIL"] ?? "").trim().toLowerCase();
+  const owner = (
+    process.env["ADMIN_OWNER_EMAIL"] ??
+    process.env["OWNER_EMAIL"] ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
   if (!owner || owner !== user.email) return;
   const roles = await rolesOfUser(user.id);
   if (roles.includes("owner")) return;
