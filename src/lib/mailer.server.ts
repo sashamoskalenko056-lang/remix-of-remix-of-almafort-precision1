@@ -61,7 +61,8 @@ export function smtpConfig() {
     ? /^(1|true|yes)$/i.test(process.env["SMTP_SECURE"]!)
     : port === 465;
   return {
-    host: requireEnv("SMTP_HOST"),
+    // По умолчанию — Gmail (пароль приложения из 16 символов в SMTP_PASS).
+    host: process.env["SMTP_HOST"] || "smtp.gmail.com",
     port,
     secure,
     requireTLS: !secure && port === 587,

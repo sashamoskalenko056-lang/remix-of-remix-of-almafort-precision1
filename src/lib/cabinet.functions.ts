@@ -304,3 +304,25 @@ export const repeatOrder = createServerFn({ method: "POST" })
       repriced: lines.filter((l) => l.available && l.priceChanged).map((l) => l.name),
     };
   });
+
+/**
+ * Резервный пароль задаётся ТОЛЬКО из кабинета: стартовая авторизация
+ * на сайте всегда идёт по одноразовому коду, пароль там не участвует.
+ */
+export const setBackupPassword = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((input: { password: string }) =>
+    z
+      .object({
+        password: z
+          .string()
+          .min(8, "Пароль от 8 символов")
+          .max(200, "Слишком длинный пароль"),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { setPassword } = await import("@/lib/auth.server");
+    await setPassword(context.userId, data.password);
+    return { ok: true };
+  });
