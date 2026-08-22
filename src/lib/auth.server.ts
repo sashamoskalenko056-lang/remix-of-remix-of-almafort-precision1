@@ -180,7 +180,7 @@ export async function createActionToken(userId: string, kind: LinkKind): Promise
     user_id: userId,
     kind,
     token,
-    expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     used: false,
   });
   return token;

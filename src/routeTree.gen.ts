@@ -37,6 +37,10 @@ import { Route as AuthenticatedAdminAlmaSecure2026ProductsRouteImport } from './
 import { Route as AuthenticatedAdminAlmaSecure2026SettingsRouteImport } from './routes/_authenticated/admin-alma-secure-2026.settings'
 import { Route as AuthenticatedOrdersOrderIdRouteImport } from './routes/_authenticated/orders.$orderId'
 import { Route as ApiAdminCatalogSyncRouteImport } from './routes/api/admin/catalog-sync'
+import { Route as ApiAuthConsumeLinkRouteImport } from './routes/api/auth/consume-link'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthOtpRequestRouteImport } from './routes/api/auth/otp-request'
+import { Route as ApiAuthOtpVerifyRouteImport } from './routes/api/auth/otp-verify'
 import { Route as ApiCheckoutSubmitRouteImport } from './routes/api/checkout/submit'
 import { Route as ApiConfiguratorSolveRouteImport } from './routes/api/configurator/solve'
 import { Route as ApiDadataCityRouteImport } from './routes/api/dadata/city'
@@ -202,6 +206,26 @@ const ApiAdminCatalogSyncRoute = ApiAdminCatalogSyncRouteImport.update({
   path: '/api/admin/catalog-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthConsumeLinkRoute = ApiAuthConsumeLinkRouteImport.update({
+  id: '/api/auth/consume-link',
+  path: '/api/auth/consume-link',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthOtpRequestRoute = ApiAuthOtpRequestRouteImport.update({
+  id: '/api/auth/otp-request',
+  path: '/api/auth/otp-request',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthOtpVerifyRoute = ApiAuthOtpVerifyRouteImport.update({
+  id: '/api/auth/otp-verify',
+  path: '/api/auth/otp-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCheckoutSubmitRoute = ApiCheckoutSubmitRouteImport.update({
   id: '/api/checkout/submit',
   path: '/api/checkout/submit',
@@ -312,6 +336,10 @@ export interface FileRoutesByFullPath {
   '/admin-alma-secure-2026/settings': typeof AuthenticatedAdminAlmaSecure2026SettingsRoute
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/api/admin/catalog-sync': typeof ApiAdminCatalogSyncRoute
+  '/api/auth/consume-link': typeof ApiAuthConsumeLinkRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/otp-request': typeof ApiAuthOtpRequestRoute
+  '/api/auth/otp-verify': typeof ApiAuthOtpVerifyRoute
   '/api/checkout/submit': typeof ApiCheckoutSubmitRoute
   '/api/configurator/solve': typeof ApiConfiguratorSolveRoute
   '/api/dadata/city': typeof ApiDadataCityRoute
@@ -355,6 +383,10 @@ export interface FileRoutesByTo {
   '/admin-alma-secure-2026/settings': typeof AuthenticatedAdminAlmaSecure2026SettingsRoute
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/api/admin/catalog-sync': typeof ApiAdminCatalogSyncRoute
+  '/api/auth/consume-link': typeof ApiAuthConsumeLinkRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/otp-request': typeof ApiAuthOtpRequestRoute
+  '/api/auth/otp-verify': typeof ApiAuthOtpVerifyRoute
   '/api/checkout/submit': typeof ApiCheckoutSubmitRoute
   '/api/configurator/solve': typeof ApiConfiguratorSolveRoute
   '/api/dadata/city': typeof ApiDadataCityRoute
@@ -402,6 +434,10 @@ export interface FileRoutesById {
   '/_authenticated/admin-alma-secure-2026/settings': typeof AuthenticatedAdminAlmaSecure2026SettingsRoute
   '/_authenticated/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/api/admin/catalog-sync': typeof ApiAdminCatalogSyncRoute
+  '/api/auth/consume-link': typeof ApiAuthConsumeLinkRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/otp-request': typeof ApiAuthOtpRequestRoute
+  '/api/auth/otp-verify': typeof ApiAuthOtpVerifyRoute
   '/api/checkout/submit': typeof ApiCheckoutSubmitRoute
   '/api/configurator/solve': typeof ApiConfiguratorSolveRoute
   '/api/dadata/city': typeof ApiDadataCityRoute
@@ -449,6 +485,10 @@ export interface FileRouteTypes {
     | '/admin-alma-secure-2026/settings'
     | '/orders/$orderId'
     | '/api/admin/catalog-sync'
+    | '/api/auth/consume-link'
+    | '/api/auth/logout'
+    | '/api/auth/otp-request'
+    | '/api/auth/otp-verify'
     | '/api/checkout/submit'
     | '/api/configurator/solve'
     | '/api/dadata/city'
@@ -492,6 +532,10 @@ export interface FileRouteTypes {
     | '/admin-alma-secure-2026/settings'
     | '/orders/$orderId'
     | '/api/admin/catalog-sync'
+    | '/api/auth/consume-link'
+    | '/api/auth/logout'
+    | '/api/auth/otp-request'
+    | '/api/auth/otp-verify'
     | '/api/checkout/submit'
     | '/api/configurator/solve'
     | '/api/dadata/city'
@@ -538,6 +582,10 @@ export interface FileRouteTypes {
     | '/_authenticated/admin-alma-secure-2026/settings'
     | '/_authenticated/orders/$orderId'
     | '/api/admin/catalog-sync'
+    | '/api/auth/consume-link'
+    | '/api/auth/logout'
+    | '/api/auth/otp-request'
+    | '/api/auth/otp-verify'
     | '/api/checkout/submit'
     | '/api/configurator/solve'
     | '/api/dadata/city'
@@ -574,6 +622,10 @@ export interface RootRouteChildren {
   ApiShippingCalcRoute: typeof ApiShippingCalcRoute
   SitemapProductsPageRoute: typeof SitemapProductsPageRoute
   ApiAdminCatalogSyncRoute: typeof ApiAdminCatalogSyncRoute
+  ApiAuthConsumeLinkRoute: typeof ApiAuthConsumeLinkRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthOtpRequestRoute: typeof ApiAuthOtpRequestRoute
+  ApiAuthOtpVerifyRoute: typeof ApiAuthOtpVerifyRoute
   ApiCheckoutSubmitRoute: typeof ApiCheckoutSubmitRoute
   ApiConfiguratorSolveRoute: typeof ApiConfiguratorSolveRoute
   ApiDadataCityRoute: typeof ApiDadataCityRoute
@@ -789,6 +841,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminCatalogSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/consume-link': {
+      id: '/api/auth/consume-link'
+      path: '/api/auth/consume-link'
+      fullPath: '/api/auth/consume-link'
+      preLoaderRoute: typeof ApiAuthConsumeLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/otp-request': {
+      id: '/api/auth/otp-request'
+      path: '/api/auth/otp-request'
+      fullPath: '/api/auth/otp-request'
+      preLoaderRoute: typeof ApiAuthOtpRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/otp-verify': {
+      id: '/api/auth/otp-verify'
+      path: '/api/auth/otp-verify'
+      fullPath: '/api/auth/otp-verify'
+      preLoaderRoute: typeof ApiAuthOtpVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/checkout/submit': {
       id: '/api/checkout/submit'
       path: '/api/checkout/submit'
@@ -986,6 +1066,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiShippingCalcRoute: ApiShippingCalcRoute,
   SitemapProductsPageRoute: SitemapProductsPageRoute,
   ApiAdminCatalogSyncRoute: ApiAdminCatalogSyncRoute,
+  ApiAuthConsumeLinkRoute: ApiAuthConsumeLinkRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthOtpRequestRoute: ApiAuthOtpRequestRoute,
+  ApiAuthOtpVerifyRoute: ApiAuthOtpVerifyRoute,
   ApiCheckoutSubmitRoute: ApiCheckoutSubmitRoute,
   ApiConfiguratorSolveRoute: ApiConfiguratorSolveRoute,
   ApiDadataCityRoute: ApiDadataCityRoute,

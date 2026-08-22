@@ -12,11 +12,29 @@
     {
       "id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
       "created_at": "2026-08-22T14:34:50.323Z",
-      "updated_at": "2026-08-22T14:34:50.323Z",
+      "updated_at": "2026-08-22T16:39:26.006Z",
       "email": "sashamoskalenko0@gmail.com",
       "password_hash": "scrypt:18feba0b4a610c03da8a58e9893b4c11:7720c55665fd401d36695f3a8b6cea8542698bd913f840a091883d2f2f9eb827e2600c346176a0e7e7df2a5792ed3ab56230734681cfabc9768147c57a26db30",
       "full_name": "Александр Москаленко",
-      "email_verified": false
+      "email_verified": true
+    },
+    {
+      "id": "fd144f43-93c2-47c7-b8b9-53770b4b0c42",
+      "created_at": "2026-08-22T16:37:48.683Z",
+      "updated_at": "2026-08-22T16:37:48.683Z",
+      "email": "qa-otp@example.com",
+      "password_hash": "scrypt:9eff701cae12f4adb95482f00c5615fc:15084adeba04d129992c72e7d3ad7091b1250036e1a65e3840821eb3e47112df0ad9d009843287fc875cb4230e6a7f87517584704e93dbccfcb6c051241226a4",
+      "full_name": null,
+      "email_verified": true
+    },
+    {
+      "id": "0b640b3f-3fa9-4cc6-89b4-3d2cfc9f322e",
+      "created_at": "2026-08-22T16:39:07.391Z",
+      "updated_at": "2026-08-22T16:39:07.391Z",
+      "email": "qa4@example.com",
+      "password_hash": "scrypt:13157de1d6ace11985ac75e265a7cca4:381a502db9a4c00f085ce6d5b20128e9f57745af05179594a3cae942633edb197f72cbcae95d4971cbc79ad37ff172f3e32bd3191bc8490e25a74e2ce5368641",
+      "full_name": null,
+      "email_verified": true
     }
   ],
   "profiles": [
@@ -32,6 +50,20 @@
       "created_at": "2026-08-22T14:34:50.327Z",
       "updated_at": "2026-08-22T14:34:50.327Z",
       "full_name": "Александр Москаленко",
+      "phone": null
+    },
+    {
+      "id": "fd144f43-93c2-47c7-b8b9-53770b4b0c42",
+      "created_at": "2026-08-22T16:37:48.686Z",
+      "updated_at": "2026-08-22T16:37:48.686Z",
+      "full_name": null,
+      "phone": null
+    },
+    {
+      "id": "0b640b3f-3fa9-4cc6-89b4-3d2cfc9f322e",
+      "created_at": "2026-08-22T16:39:07.394Z",
+      "updated_at": "2026-08-22T16:39:07.394Z",
+      "full_name": null,
       "phone": null
     }
   ],
@@ -52,6 +84,13 @@
       "created_at": "2026-08-22T14:34:50.592Z",
       "updated_at": "2026-08-22T14:35:07.221Z",
       "user_id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
+      "lines": []
+    },
+    {
+      "id": "16781e33-8e2a-4eb8-90f5-453615ea6cab",
+      "created_at": "2026-08-22T16:39:07.578Z",
+      "updated_at": "2026-08-22T16:39:09.599Z",
+      "user_id": "0b640b3f-3fa9-4cc6-89b4-3d2cfc9f322e",
       "lines": []
     }
   ],
@@ -147,5 +186,6 @@
       "used": false
     }
   ],
+  "otp_codes": [],
   "crm_queue": []
 }

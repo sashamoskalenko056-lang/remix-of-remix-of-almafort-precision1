@@ -1,6 +1,10 @@
 /**
- * Клиентская сессия ALMAFORT: токен и профиль пользователя в localStorage.
- * Никаких сторонних SDK — только наш собственный API.
+ * Клиентская сессия ALMAFORT.
+ *
+ * ВАЖНО: сам токен авторизации в браузерном хранилище НЕ живёт — он лежит
+ * в HttpOnly-куке `almafort_session`, недоступной JavaScript. В localStorage
+ * держим только безопасный снимок профиля, чтобы шапка и кабинет знали,
+ * кто вошёл, без лишних запросов.
  */
 export type SessionUser = {
   id: string;
@@ -9,9 +13,9 @@ export type SessionUser = {
   email_verified: boolean;
 };
 
-export type Session = { token: string; user: SessionUser; expiresAt: number };
+export type Session = { user: SessionUser; expiresAt: number; token?: string };
 
-const KEY = "almafort:session:v1";
+const KEY = "almafort:session:v2";
 const EVENT = "almafort:auth";
 
 export function readSession(): Session | null {
@@ -20,7 +24,7 @@ export function readSession(): Session | null {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Session;
-    if (!parsed?.token || parsed.expiresAt * 1000 < Date.now()) {
+    if (!parsed?.user?.id || parsed.expiresAt * 1000 < Date.now()) {
       window.localStorage.removeItem(KEY);
       return null;
     }
@@ -32,19 +36,24 @@ export function readSession(): Session | null {
 
 export function writeSession(session: Session) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(session));
+  // Токен намеренно отбрасываем: хранить его в localStorage запрещено.
+  const safe: Session = { user: session.user, expiresAt: session.expiresAt };
+  window.localStorage.setItem(KEY, JSON.stringify(safe));
   window.dispatchEvent(new CustomEvent(EVENT, { detail: "SIGNED_IN" }));
 }
 
 export function clearSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
+  // Куку может погасить только сервер.
+  void fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
   window.dispatchEvent(new CustomEvent(EVENT, { detail: "SIGNED_OUT" }));
 }
 
 export const currentUser = () => readSession()?.user ?? null;
 export const isAuthed = () => Boolean(readSession());
-export const authToken = () => readSession()?.token ?? null;
+/** Токен недоступен клиенту — сессия передаётся кукой. */
+export const authToken = (): string | null => null;
 
 /** Подписка на вход/выход, в том числе из соседней вкладки. */
 export function onAuthChange(handler: (event: "SIGNED_IN" | "SIGNED_OUT") => void) {

@@ -1,5 +1,6 @@
 /**
- * Проверка сессии для server-функций. Токен приходит в заголовке Authorization,
+ * Проверка сессии для server-функций. Токен приходит в HttpOnly-куке
+ * (основной путь) либо в заголовке Authorization (совместимость),
  * подпись проверяется локально — внешние сервисы не участвуют.
  *
  * Важно: при отсутствии/протухании токена отвечаем МГНОВЕННО 401 JSON.
@@ -8,6 +9,7 @@
  */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { readSessionCookie } from "@/lib/session-cookie.server";
 
 /** Мгновенный 401 с предсказуемым JSON-телом — без 500-страниц и «висящих» запросов. */
 function unauthorized(reason: string): Response {
@@ -18,15 +20,18 @@ function unauthorized(reason: string): Response {
 }
 
 export const requireAuth = createMiddleware({ type: "function" }).server(async ({ next }) => {
-  const header = getRequest()?.headers?.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ") || header.length < 16) {
-    throw unauthorized("сессия не найдена");
-  }
+  const request = getRequest();
+  const header = request?.headers?.get("authorization") ?? "";
+  const raw = header.startsWith("Bearer ")
+    ? header.slice(7).trim()
+    : (readSessionCookie(request) ?? "");
+
+  if (raw.split(".").length !== 3) throw unauthorized("сессия не найдена");
 
   const { verifyToken } = await import("@/lib/auth.server");
   let claims: ReturnType<typeof verifyToken> = null;
   try {
-    claims = verifyToken(header.slice(7));
+    claims = verifyToken(raw);
   } catch (error) {
     // Например, не задан AUTH_SECRET: сообщаем в лог, но клиенту отдаём 401,
     // чтобы интерфейс ушёл на /auth, а не завис в загрузке.

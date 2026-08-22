@@ -1,31 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Mail, ShieldCheck } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { BackLink } from "@/components/back-link";
-import { signIn, signUp, verifyEmail } from "@/lib/auth.functions";
-import { readSession, writeSession } from "@/lib/session";
+import { readSession, writeSession, type SessionUser } from "@/lib/session";
 import { ConsentCheckbox } from "@/components/consent-checkbox";
-import { authErrorField, authErrorMessage } from "@/lib/auth-errors";
-import { useServerFn } from "@tanstack/react-start";
-import { passwordIssue } from "@/lib/password";
-import {
-  checkLoginAllowed,
-  reportLoginFailure,
-  reportLoginSuccess,
-} from "@/lib/auth-guard.functions";
-
-
-type Mode = "login" | "register" | "magic" | "forgot";
-
-const TABS: Array<{ id: Mode; label: string }> = [
-  { id: "login", label: "Вход" },
-  { id: "register", label: "Регистрация" },
-  { id: "magic", label: "Вход по ссылке" },
-];
 
 const emailOk = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
+const OTP_LENGTH = 4;
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -34,12 +17,12 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Кабинет снабженца: статусы заказов от станка до двери, архив счетов и УПД, повтор закупки в один клик и персональный грейд цен.",
+          "Кабинет снабженца: вход по одноразовому коду из письма, статусы заказов, архив счетов и УПД, повтор закупки в один клик.",
       },
       { property: "og:title", content: "Вход в B2B-кабинет ALMAFORT" },
       {
         property: "og:description",
-        content: "Личный кабинет снабженца: сквозной трекинг заказов, документы и оптовые грейды.",
+        content: "Личный кабинет снабженца: вход по коду из письма, трекинг заказов и документы.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -50,159 +33,174 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const [mode, setMode] = useState<Mode>("login");
+  const navigate = useNavigate();
+  const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
-  /** Экран «проверьте почту»: подтверждение регистрации, magic-link или сброс. */
-  const [sentKind, setSentKind] = useState<null | "verify" | "magic" | "reset">(null);
-  const [fieldError, setFieldError] = useState<{
-    field: "email" | "password";
-    text: string;
-  } | null>(null);
-  const navigate = useNavigate();
-  const checkLogin = useServerFn(checkLoginAllowed);
-  const reportFailure = useServerFn(reportLoginFailure);
-  const reportSuccess = useServerFn(reportLoginSuccess);
+  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [shake, setShake] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    // Одноразовые ссылки из наших писем: ?token=... (вход по ссылке) и ?verify=... (подтверждение).
-    const linkToken = url.searchParams.get("token") ?? url.searchParams.get("verify");
-    void (async () => {
-      if (linkToken) {
-        url.searchParams.delete("token");
-        url.searchParams.delete("verify");
-        url.searchParams.delete("type");
-        window.history.replaceState(null, "", url.pathname + url.search);
-        try {
-          const res = await verifyEmail({ data: { token: linkToken } });
-          writeSession({ token: res.token, expiresAt: res.expiresAt, user: res.user });
-          void navigate({ to: "/cabinet", replace: true });
-          return;
-        } catch {
-          toast.error("Ссылка недействительна или истекла");
-        }
-      }
-      if (readSession()) void navigate({ to: "/cabinet", replace: true });
-    })();
+    if (readSession()) void navigate({ to: "/cabinet", replace: true });
   }, [navigate]);
 
-  const submit = async () => {
-    setFieldError(null);
-    if (!emailOk(email)) {
-      setFieldError({ field: "email", text: "Укажите корректный рабочий E-mail." });
-      toast.error("Укажите корректный рабочий E-mail.");
-      return;
-    }
-    if ((mode === "login" || mode === "register") && password.length < 8) {
-      setFieldError({
-        field: "password",
-        text: "Пароль слишком простой. Используйте минимум 8 символов, заглавные буквы и цифры.",
-      });
-      toast.error("Пароль — минимум 8 символов");
-      return;
-    }
-    if (mode === "register") {
-      // Регистрация B2B-кабинета: слабый пароль — прямой путь к credential stuffing.
-      const weak = passwordIssue(password, email);
-      if (weak) {
-        setFieldError({ field: "password", text: weak });
-        toast.error(weak);
-        return;
-      }
-    }
+  // Таймер повторной отправки: кнопка блокируется на 60 секунд.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = window.setInterval(() => setCooldown((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => window.clearInterval(id);
+  }, [cooldown]);
 
-    const fail = (error: unknown) => {
-      const text = authErrorMessage(error);
-      const field = authErrorField(error);
-      if (field) setFieldError({ field, text });
-      toast.error(text);
-    };
+  useEffect(() => {
+    if (step === "code") inputs.current[0]?.focus();
+  }, [step]);
+
+  const sendCode = async () => {
+    setEmailError(null);
+    if (!emailOk(email)) {
+      setEmailError("Укажите корректный рабочий E-mail.");
+      return;
+    }
+    if (!consent) {
+      toast.error("Подтвердите согласие на обработку данных");
+      return;
+    }
     setBusy(true);
     try {
-      if (mode === "login") {
-        const gate = await checkLogin({ data: { email: email.trim() } }).catch(() => null);
-        if (gate && !gate.allowed) {
-          const min = Math.ceil(gate.retryAfter / 60);
-          toast.error(`Слишком много попыток входа. Повторите через ${min} мин.`);
-          return;
-        }
-        try {
-          const session = await signIn({ data: { email: email.trim(), password } });
-          writeSession({
-            token: session.token,
-            expiresAt: session.expiresAt,
-            user: session.user,
-          });
-        } catch (error) {
-          const res = await reportFailure({ data: { email: email.trim() } }).catch(() => null);
-          if (res?.blocked) {
-            toast.error("Вход заблокирован на 15 минут. Владелец аккаунта уведомлён.");
-            return;
-          }
-          fail(error);
-          return;
-        }
-        void reportSuccess({ data: { email: email.trim() } }).catch(() => null);
-        void navigate({ to: "/cabinet", replace: true });
+      const res = await fetch("/api/auth/otp-request", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        retryAfter?: number;
+      };
+      if (res.status === 429) {
+        setCooldown(body.retryAfter ?? 60);
+        toast.error(body.error ?? "Слишком часто. Попробуйте позже.");
+        return;
       }
-
-      if (mode === "register") {
-        try {
-          const session = await signUp({
-            data: { email: email.trim(), password, fullName: name.trim() || undefined },
-          });
-          writeSession({
-            token: session.token,
-            expiresAt: session.expiresAt,
-            user: session.user,
-          });
-        } catch (error) {
-          fail(error);
-          return;
-        }
-        void navigate({ to: "/cabinet", replace: true });
+      if (!res.ok) {
+        toast.error(body.error ?? "Не удалось отправить код. Повторите позже.");
+        return;
       }
-
-      if (mode === "magic") {
-        const res = await fetch("/api/public/send-mail", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ type: "magiclink", email: email.trim() }),
-        });
-        if (!res.ok) {
-          fail(new Error("Не удалось отправить ссылку. Повторите позже."));
-          return;
-        }
-        setSentKind("magic");
-      }
-
-      if (mode === "forgot") {
-        // Письмо уходит через собственный SMTP ALMAFORT, а не через почтовик бэкенда.
-        const res = await fetch("/api/public/send-mail", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ type: "recovery", email: email.trim() }),
-        });
-        if (!res.ok) {
-          fail(new Error("Не удалось отправить письмо. Повторите позже."));
-          return;
-        }
-        setSentKind("reset");
-      }
-    } catch (e) {
-      fail(e);
+      setDigits(Array(OTP_LENGTH).fill(""));
+      setCodeError(null);
+      setCooldown(60);
+      setStep("code");
+      toast.success(`Код отправлен на ${email.trim()}`);
+    } catch {
+      toast.error("Сеть недоступна. Проверьте соединение.");
     } finally {
       setBusy(false);
     }
   };
 
+  const failCode = (text: string, backToEmail = false) => {
+    setCodeError(text);
+    setShake(true);
+    window.setTimeout(() => setShake(false), 420);
+    setDigits(Array(OTP_LENGTH).fill(""));
+    if (backToEmail) {
+      setStep("email");
+      toast.error(text);
+    } else {
+      inputs.current[0]?.focus();
+    }
+  };
 
-  const needConsent = mode === "register";
-  const disabled = busy || (needConsent && !consent);
+  const submitCode = async (code: string) => {
+    if (code.length !== OTP_LENGTH || busy) return;
+    setBusy(true);
+    setCodeError(null);
+    try {
+      const res = await fetch("/api/auth/otp-verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        status?: string;
+        error?: string;
+        user?: SessionUser;
+        expiresAt?: number;
+      };
+
+      if (body.status === "ok" && body.user && body.expiresAt) {
+        writeSession({ user: body.user, expiresAt: body.expiresAt });
+        void navigate({ to: "/cabinet", replace: true });
+        return;
+      }
+      if (body.status === "locked") {
+        setCooldown(0);
+        failCode(body.error ?? "Попытки исчерпаны. Запросите код заново", true);
+        return;
+      }
+      if (body.status === "expired") {
+        failCode(body.error ?? "Время действия кода истекло. Запросите новый", true);
+        return;
+      }
+      failCode(body.error ?? "Неверный код");
+    } catch {
+      failCode("Сеть недоступна. Повторите попытку.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setDigit = (index: number, value: string) => {
+    const clean = value.replace(/\D/g, "");
+    if (!clean) {
+      const next = [...digits];
+      next[index] = "";
+      setDigits(next);
+      return;
+    }
+    // Вставка полного кода из письма: раскладываем цифры по всем квадратам.
+    if (clean.length > 1) {
+      const filled = clean.slice(0, OTP_LENGTH).split("");
+      const next = Array(OTP_LENGTH)
+        .fill("")
+        .map((_, i) => filled[i] ?? "");
+      setDigits(next);
+      inputs.current[Math.min(filled.length, OTP_LENGTH) - 1]?.focus();
+      if (filled.length === OTP_LENGTH) void submitCode(filled.join(""));
+      return;
+    }
+    const next = [...digits];
+    next[index] = clean;
+    setDigits(next);
+    setCodeError(null);
+    if (index < OTP_LENGTH - 1) inputs.current[index + 1]?.focus();
+    if (next.every((d) => d)) void submitCode(next.join(""));
+  };
+
+  const onKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const next = [...digits];
+      if (next[index]) {
+        next[index] = "";
+        setDigits(next);
+        return;
+      }
+      if (index > 0) {
+        next[index - 1] = "";
+        setDigits(next);
+        inputs.current[index - 1]?.focus();
+      }
+    }
+    if (e.key === "ArrowLeft" && index > 0) inputs.current[index - 1]?.focus();
+    if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) inputs.current[index + 1]?.focus();
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -211,163 +209,131 @@ function AuthPage() {
         <BackLink fallback="/" label="На главную" className="mb-6" />
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">B2B-кабинет</h1>
         <p className="mt-3 text-sm leading-[1.6] text-muted-foreground">
-          Статусы заказов от станка до двери, архив счетов и УПД, повтор закупки в один клик и ваш
-          грейд цен. Пароли хранятся в виде необратимого хэша, сессия — в защищённой куке.
+          Вход и регистрация — по одноразовому коду из письма. Пароли не нужны: сессия хранится в
+          защищённой куке, недоступной сторонним скриптам.
         </p>
 
-        {sentKind ? (
-          <div className="mt-8 rounded-sm border border-border bg-card p-6">
-            <Mail className="size-6 text-primary" strokeWidth={1.75} />
-            <p className="mt-3 text-sm font-semibold text-foreground">
-              {sentKind === "verify"
-                ? "Подтвердите почту"
-                : sentKind === "reset"
-                  ? "Письмо для сброса отправлено"
-                  : "Ссылка входа отправлена"}
-            </p>
-            <p className="mt-2 text-sm leading-[1.6] text-muted-foreground">
-              Проверьте ящик {email}.{" "}
-              {sentKind === "verify"
-                ? "До подтверждения кабинет и оформление заказов заблокированы."
-                : sentKind === "reset"
-                  ? "Ссылка одноразовая и действует ограниченное время."
-                  : "Откройте ссылку на этом же устройстве."}
-            </p>
-            <button
-              type="button"
-              onClick={() => setSentKind(null)}
-              className="mt-4 cursor-pointer bg-transparent text-sm font-medium text-primary transition-opacity hover:opacity-80"
-            >
-              Вернуться к форме
-            </button>
-          </div>
-        ) : (
-          <div className="mt-8 rounded-sm border border-border bg-card p-6">
-            <div className="mb-5 flex gap-1 rounded-sm bg-[#F1F3F5] p-1">
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setMode(t.id)}
-                  className={`flex-1 cursor-pointer rounded-sm px-3 py-2 text-[13px] font-semibold transition-all duration-200 ${
-                    mode === t.id || (mode === "forgot" && t.id === "login")
-                      ? "bg-card text-foreground shadow-[0_1px_3px_oklch(0_0_0/0.12)]"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
+        <div className="mt-8 rounded-sm border border-border bg-card p-6">
+          {step === "email" ? (
             <div className="space-y-4">
-              {mode === "register" && (
-                <label className="block text-sm font-medium text-foreground">
-                  ФИО снабженца <span className="text-primary">*</span>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Иванов Иван"
-                    autoComplete="name"
-                    className="mt-2 h-11 w-full rounded-sm border border-[#D1D5DB] px-3.5 text-sm outline-none transition-colors focus:border-foreground"
-                  />
-                </label>
-              )}
-
               <label className="block text-sm font-medium text-foreground">
                 Рабочая почта <span className="text-primary">*</span>
                 <input
                   type="email"
+                  inputMode="email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    setFieldError(null);
+                    setEmailError(null);
                   }}
-                  onKeyDown={(e) => e.key === "Enter" && !disabled && void submit()}
+                  onKeyDown={(e) => e.key === "Enter" && !busy && void sendCode()}
                   placeholder="snab@zavod.ru"
                   autoComplete="email"
-                  aria-invalid={fieldError?.field === "email"}
-                  className={`mt-2 h-11 w-full rounded-sm border px-3.5 text-sm outline-none transition-colors focus:border-foreground ${
-                    fieldError?.field === "email" ? "border-primary" : "border-[#D1D5DB]"
+                  aria-invalid={Boolean(emailError)}
+                  className={`mt-2 h-12 w-full rounded-sm border px-3.5 text-base outline-none transition-colors focus:border-foreground ${
+                    emailError ? "border-primary" : "border-[#D1D5DB]"
                   }`}
                 />
-                {fieldError?.field === "email" && (
+                {emailError && (
                   <span className="mt-1.5 block text-xs font-normal leading-[1.5] text-primary">
-                    {fieldError.text}
+                    {emailError}
                   </span>
                 )}
               </label>
 
-
-              {(mode === "login" || mode === "register") && (
-                <label className="block text-sm font-medium text-foreground">
-                  Пароль <span className="text-primary">*</span>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setFieldError(null);
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && !disabled && void submit()}
-                    placeholder="Минимум 8 символов"
-                    autoComplete={mode === "login" ? "current-password" : "new-password"}
-                    aria-invalid={fieldError?.field === "password"}
-                    className={`mt-2 h-11 w-full rounded-sm border px-3.5 text-sm outline-none transition-colors focus:border-foreground ${
-                      fieldError?.field === "password" ? "border-primary" : "border-[#D1D5DB]"
-                    }`}
-                  />
-                  {fieldError?.field === "password" && (
-                    <span className="mt-1.5 block text-xs font-normal leading-[1.5] text-primary">
-                      {fieldError.text}
-                    </span>
-                  )}
-                </label>
-
-              )}
-
-              {mode === "forgot" && (
-                <p className="rounded-sm bg-[#F8F9FA] px-3 py-2 text-xs leading-[1.5] text-muted-foreground">
-                  Пришлём одноразовую ссылку на смену пароля. После сброса активные сессии на всех
-                  устройствах завершаются.
-                </p>
-              )}
-
-              {needConsent && <ConsentCheckbox checked={consent} onChange={setConsent} />}
+              <ConsentCheckbox checked={consent} onChange={setConsent} />
 
               <button
                 type="button"
-                disabled={disabled}
-                onClick={() => void submit()}
-                className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-sm bg-primary text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-[#B91C1C] hover:shadow-[0_8px_20px_oklch(0_0_0/0.18)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={busy || cooldown > 0}
+                onClick={() => void sendCode()}
+                className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-sm bg-primary text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-[#B91C1C] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy && <Loader2 className="size-4 animate-spin" />}
-                {mode === "login"
-                  ? "Войти в кабинет"
-                  : mode === "register"
-                    ? "Создать кабинет"
-                    : mode === "magic"
-                      ? "Получить ссылку для входа"
-                      : "Прислать ссылку для сброса"}
+                {cooldown > 0
+                  ? `Запросить новый код можно через ${cooldown} сек.`
+                  : "Получить код входа"}
               </button>
+              <p className="text-xs leading-[1.5] text-muted-foreground">
+                Если почты ещё нет в системе — кабинет снабженца создастся автоматически.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex items-start gap-2">
+                <Mail className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.75} />
+                <p className="text-sm leading-[1.6] text-foreground">
+                  Код из 4 цифр отправлен на <span className="font-semibold">{email}</span>. Он
+                  действует 5 минут.
+                </p>
+              </div>
 
-              {mode !== "magic" && (
+              <div
+                className={`flex justify-center gap-3 ${shake ? "animate-[otp-shake_0.4s_ease-in-out]" : ""}`}
+              >
+                {digits.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => {
+                      inputs.current[i] = el;
+                    }}
+                    value={digit}
+                    onChange={(e) => setDigit(i, e.target.value)}
+                    onKeyDown={(e) => onKeyDown(i, e)}
+                    onFocus={(e) => e.currentTarget.select()}
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                    maxLength={OTP_LENGTH}
+                    aria-label={`Цифра ${i + 1}`}
+                    aria-invalid={Boolean(codeError)}
+                    disabled={busy}
+                    className={`size-16 rounded-sm border-2 text-center text-3xl font-bold text-foreground outline-none transition-colors sm:size-[68px] ${
+                      codeError
+                        ? "border-primary bg-primary/5"
+                        : "border-[#D1D5DB] focus:border-foreground"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {codeError && (
+                <p className="text-center text-sm font-medium text-primary">{codeError}</p>
+              )}
+              {busy && (
+                <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" /> Проверяем код…
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={() => setMode(mode === "forgot" ? "login" : "forgot")}
+                  onClick={() => {
+                    setStep("email");
+                    setCodeError(null);
+                  }}
                   className="cursor-pointer bg-transparent text-[13px] font-medium text-muted-foreground transition-colors hover:text-primary"
                 >
-                  {mode === "forgot" ? "Вспомнил пароль — войти" : "Забыли пароль?"}
+                  Изменить почту
                 </button>
-              )}
+                <button
+                  type="button"
+                  disabled={cooldown > 0 || busy}
+                  onClick={() => void sendCode()}
+                  className="cursor-pointer bg-transparent text-[13px] font-semibold text-primary transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:text-muted-foreground"
+                >
+                  {cooldown > 0 ? `Новый код через ${cooldown} сек.` : "Отправить код повторно"}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <p className="mt-6 flex items-start gap-2 text-xs leading-[1.5] text-muted-foreground">
           <ShieldCheck className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
-          Доступ к заказам, счетам и УПД — только владельцу аккаунта: данные изолированы на уровне
-          базы.
+          Доступ к заказам, счетам и УПД — только владельцу аккаунта: код действует 5 минут, не
+          более 3 попыток ввода.
         </p>
         <p className="mt-3 text-xs text-muted-foreground">
           Нет заказов?{" "}
