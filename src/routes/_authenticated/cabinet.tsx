@@ -57,7 +57,20 @@ function CabinetPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["cabinet"],
     queryFn: () => fetchCabinet(),
+    // Истёкшую сессию бессмысленно ретраить — уводим на /auth.
+    retry: (count, err) => !isAuthError(err) && count < 2,
   });
+
+  // 401 = токен протух: чистим сессию и отправляем на вход, а не показываем заглушку.
+  useEffect(() => {
+    if (!isAuthError(error)) return;
+    void (async () => {
+      await qc.cancelQueries();
+      qc.clear();
+      await supabase.auth.signOut();
+      void navigate({ to: "/auth", replace: true });
+    })();
+  }, [error, qc, navigate]);
 
   const [inn, setInn] = useState("");
   const [party, setParty] = useState<Party | null>(null);
