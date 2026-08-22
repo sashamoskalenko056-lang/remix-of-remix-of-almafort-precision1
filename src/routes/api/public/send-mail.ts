@@ -119,7 +119,12 @@ export const Route = createFileRoute("/api/public/send-mail")({
             body.type === "invite"
               ? inviteEmail(`${siteUrl()}/auth`, body.company)
               : body.type === "order"
-                ? orderNotificationEmail(body)
+                ? orderNotificationEmail({
+                    orderNumber: body.orderNumber,
+                    ...(body.total ? { total: body.total } : {}),
+                    ...(body.customer ? { customer: body.customer } : {}),
+                    ...(body.url ? { url: body.url } : {}),
+                  })
                 : noticeEmail(body.subject, body.message);
 
           await sendMail({ to: body.email, ...mail });

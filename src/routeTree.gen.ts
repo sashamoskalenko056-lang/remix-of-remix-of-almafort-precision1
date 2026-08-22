@@ -43,6 +43,7 @@ import { Route as ApiDadataCityRouteImport } from './routes/api/dadata/city'
 import { Route as ApiDadataPartyRouteImport } from './routes/api/dadata/party'
 import { Route as ApiLeadsBulkRouteImport } from './routes/api/leads/bulk'
 import { Route as ApiParserUploadRouteImport } from './routes/api/parser/upload'
+import { Route as ApiPublicSendMailRouteImport } from './routes/api/public/send-mail'
 import { Route as ApiQuizSubmitRouteImport } from './routes/api/quiz/submit'
 import { Route as ApiUploadPresignedUrlRouteImport } from './routes/api/upload/presigned-url'
 import { Route as ApiVisionIdentifyRouteImport } from './routes/api/vision/identify'
@@ -231,6 +232,11 @@ const ApiParserUploadRoute = ApiParserUploadRouteImport.update({
   path: '/api/parser/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSendMailRoute = ApiPublicSendMailRouteImport.update({
+  id: '/api/public/send-mail',
+  path: '/api/public/send-mail',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiQuizSubmitRoute = ApiQuizSubmitRouteImport.update({
   id: '/api/quiz/submit',
   path: '/api/quiz/submit',
@@ -312,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/api/dadata/party': typeof ApiDadataPartyRoute
   '/api/leads/bulk': typeof ApiLeadsBulkRoute
   '/api/parser/upload': typeof ApiParserUploadRoute
+  '/api/public/send-mail': typeof ApiPublicSendMailRoute
   '/api/quiz/submit': typeof ApiQuizSubmitRoute
   '/api/upload/presigned-url': typeof ApiUploadPresignedUrlRoute
   '/api/vision/identify': typeof ApiVisionIdentifyRoute
@@ -354,6 +361,7 @@ export interface FileRoutesByTo {
   '/api/dadata/party': typeof ApiDadataPartyRoute
   '/api/leads/bulk': typeof ApiLeadsBulkRoute
   '/api/parser/upload': typeof ApiParserUploadRoute
+  '/api/public/send-mail': typeof ApiPublicSendMailRoute
   '/api/quiz/submit': typeof ApiQuizSubmitRoute
   '/api/upload/presigned-url': typeof ApiUploadPresignedUrlRoute
   '/api/vision/identify': typeof ApiVisionIdentifyRoute
@@ -400,6 +408,7 @@ export interface FileRoutesById {
   '/api/dadata/party': typeof ApiDadataPartyRoute
   '/api/leads/bulk': typeof ApiLeadsBulkRoute
   '/api/parser/upload': typeof ApiParserUploadRoute
+  '/api/public/send-mail': typeof ApiPublicSendMailRoute
   '/api/quiz/submit': typeof ApiQuizSubmitRoute
   '/api/upload/presigned-url': typeof ApiUploadPresignedUrlRoute
   '/api/vision/identify': typeof ApiVisionIdentifyRoute
@@ -446,6 +455,7 @@ export interface FileRouteTypes {
     | '/api/dadata/party'
     | '/api/leads/bulk'
     | '/api/parser/upload'
+    | '/api/public/send-mail'
     | '/api/quiz/submit'
     | '/api/upload/presigned-url'
     | '/api/vision/identify'
@@ -488,6 +498,7 @@ export interface FileRouteTypes {
     | '/api/dadata/party'
     | '/api/leads/bulk'
     | '/api/parser/upload'
+    | '/api/public/send-mail'
     | '/api/quiz/submit'
     | '/api/upload/presigned-url'
     | '/api/vision/identify'
@@ -533,6 +544,7 @@ export interface FileRouteTypes {
     | '/api/dadata/party'
     | '/api/leads/bulk'
     | '/api/parser/upload'
+    | '/api/public/send-mail'
     | '/api/quiz/submit'
     | '/api/upload/presigned-url'
     | '/api/vision/identify'
@@ -568,6 +580,7 @@ export interface RootRouteChildren {
   ApiDadataPartyRoute: typeof ApiDadataPartyRoute
   ApiLeadsBulkRoute: typeof ApiLeadsBulkRoute
   ApiParserUploadRoute: typeof ApiParserUploadRoute
+  ApiPublicSendMailRoute: typeof ApiPublicSendMailRoute
   ApiQuizSubmitRoute: typeof ApiQuizSubmitRoute
   ApiUploadPresignedUrlRoute: typeof ApiUploadPresignedUrlRoute
   ApiVisionIdentifyRoute: typeof ApiVisionIdentifyRoute
@@ -818,6 +831,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiParserUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/send-mail': {
+      id: '/api/public/send-mail'
+      path: '/api/public/send-mail'
+      fullPath: '/api/public/send-mail'
+      preLoaderRoute: typeof ApiPublicSendMailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/quiz/submit': {
       id: '/api/quiz/submit'
       path: '/api/quiz/submit'
@@ -972,6 +992,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDadataPartyRoute: ApiDadataPartyRoute,
   ApiLeadsBulkRoute: ApiLeadsBulkRoute,
   ApiParserUploadRoute: ApiParserUploadRoute,
+  ApiPublicSendMailRoute: ApiPublicSendMailRoute,
   ApiQuizSubmitRoute: ApiQuizSubmitRoute,
   ApiUploadPresignedUrlRoute: ApiUploadPresignedUrlRoute,
   ApiVisionIdentifyRoute: ApiVisionIdentifyRoute,
