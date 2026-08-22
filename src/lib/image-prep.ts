@@ -108,14 +108,24 @@ export function compress(
   }
 
   const type = supportsWebp() ? "image/webp" : "image/jpeg";
-  const dataUrl = canvas.toDataURL(type, quality);
+  let q = quality;
+  let dataUrl = canvas.toDataURL(type, q);
+  let kb = Math.round((dataUrl.length * 0.75) / 1024);
+  // Кадры с телефона даже после ресайза бывают тяжёлыми (шум матрицы плохо жмётся):
+  // добиваем качеством, пока не влезем в лимит запроса.
+  while (kb > MAX_UPLOAD_KB && q > 0.4) {
+    q = Math.max(0.4, q - 0.15);
+    dataUrl = canvas.toDataURL(type, q);
+    kb = Math.round((dataUrl.length * 0.75) / 1024);
+  }
   return {
     dataUrl,
-    kb: Math.round((dataUrl.length * 0.75) / 1024),
+    kb,
     width: canvas.width,
     height: canvas.height,
   };
 }
+
 
 export type FrameStats = {
   /** Средняя яркость 0..255. */
