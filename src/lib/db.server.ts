@@ -81,7 +81,7 @@ class Query implements PromiseLike<DbResult<Row[]>> {
   private filters: Filter[] = [];
   private sort?: { column: string; asc: boolean };
   private limitN?: number;
-  private range?: [number, number];
+  private rangeWindow?: [number, number];
   private mode: "select" | "insert" | "update" | "upsert" | "delete" = "select";
   private payload: Row[] = [];
   private conflict?: string[];
@@ -171,14 +171,9 @@ class Query implements PromiseLike<DbResult<Row[]>> {
     this.limitN = n;
     return this;
   }
-  rangeRows(from: number, to: number) {
-    this.range = [from, to];
-    return this;
-  }
-  // Совместимость с прежним именем
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   range(from: number, to: number) {
-    return this.rangeRows(from, to);
+    this.rangeWindow = [from, to];
+    return this;
   }
 
   async maybeSingle(): Promise<DbResult<Row | null>> {
@@ -266,7 +261,7 @@ class Query implements PromiseLike<DbResult<Row[]>> {
           return asc ? cmp : -cmp;
         });
       }
-      if (this.range) result = result.slice(this.range[0], this.range[1] + 1);
+      if (this.rangeWindow) result = result.slice(this.rangeWindow[0], this.rangeWindow[1] + 1);
       if (this.limitN != null) result = result.slice(0, this.limitN);
       return { data: result.map((r) => ({ ...r })), error: null, count: this.wantCount ? total : total };
     } catch (e) {
