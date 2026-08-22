@@ -782,8 +782,6 @@ export function CartPanel() {
         </div>
       )}
 
-      {/* Запас под липкую панель, чтобы последний блок не прятался */}
-      {lines.length > 0 && <div className="h-24 md:hidden" aria-hidden />}
     </div>
 
   );
