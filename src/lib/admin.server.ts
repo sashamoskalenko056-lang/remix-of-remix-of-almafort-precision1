@@ -2,24 +2,18 @@
  * Серверные помощники админки: RBAC, журнал действий и AES-256 хранилище ключей.
  * Файл *.server.ts никогда не попадает в клиентский бандл.
  */
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import type { AdminRole } from "@/lib/admin";
+import { db } from "@/lib/db.server";
 
-type AnyClient = SupabaseClient<any, any, any>;
-
-export async function rolesOf(supabase: AnyClient, userId: string): Promise<AdminRole[]> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  return ((data ?? []) as Array<{ role: AdminRole }>).map((r) => r.role);
+export async function rolesOf(userId: string): Promise<AdminRole[]> {
+  const { data } = await db.from("user_roles").select("role").eq("user_id", userId);
+  return data.map((r) => r["role"] as AdminRole);
 }
 
 /** Единственная точка авторизации админки. Ошибка = 403 на бэкенде, не на фронте. */
-export async function requireRole(
-  supabase: AnyClient,
-  userId: string,
-  allowed: AdminRole[],
-): Promise<AdminRole[]> {
-  const roles = await rolesOf(supabase, userId);
+export async function requireRole(userId: string, allowed: AdminRole[]): Promise<AdminRole[]> {
+  const roles = await rolesOf(userId);
   if (!roles.some((r) => allowed.includes(r))) {
     throw new Error("403 Forbidden: недостаточно прав");
   }
