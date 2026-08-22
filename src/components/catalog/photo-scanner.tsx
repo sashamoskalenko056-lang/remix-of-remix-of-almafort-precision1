@@ -104,13 +104,10 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
     setCamError(null);
     setPaused(false);
     try {
-      // Без HTTPS (или localhost) браузер вообще не спрашивает разрешение на камеру.
-      if (typeof window !== "undefined" && window.isSecureContext === false) {
-        throw Object.assign(new Error("insecure"), { name: "InsecureContextError" });
-      }
       if (!navigator.mediaDevices?.getUserMedia) {
         throw Object.assign(new Error("no api"), { name: "NotFoundError" });
       }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         // Тыльная камера обязательна по умолчанию: селфи-камера в сканере — критический баг.
         video: { facingMode: { ideal: facingRef.current }, width: { ideal: 1920 } },
