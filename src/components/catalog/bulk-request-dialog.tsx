@@ -247,7 +247,7 @@ export function BulkRequestDialog({
 
             <button
               type="submit"
-              disabled={state === "sending" || !requiredOk}
+              disabled={state === "sending"}
               className="h-12 w-full cursor-pointer rounded-sm bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {state === "sending" ? "Отправляем…" : "Отправить запрос в отдел оптовых продаж"}

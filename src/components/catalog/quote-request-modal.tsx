@@ -159,7 +159,7 @@ export function QuoteRequestModal({
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={!valid || busy}
+          disabled={busy}
           className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-sm bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy && <Loader2 className="size-4 animate-spin" strokeWidth={2} />}

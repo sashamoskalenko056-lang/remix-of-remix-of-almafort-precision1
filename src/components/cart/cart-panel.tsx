@@ -157,8 +157,8 @@ export function CartPanel() {
     isFilledInn(inn);
   const err = (kind: "name" | "email" | "phone" | "inn", value: string) =>
     triedSubmit ? fieldError(kind, value) : null;
-  const ctaDisabled =
-    !cartReady || !consent || !requiredOk || unverified || Boolean(party?.blocked);
+  // Кнопку не блокируем «молча»: клик подсвечивает незаполненные поля и даёт тост.
+  const ctaDisabled = !cartReady || unverified || Boolean(party?.blocked);
 
   const [submitting, setSubmitting] = useState(false);
   const idemKey = useRef<string | null>(null);
@@ -175,6 +175,10 @@ export function CartPanel() {
     if (!ensureOnline("Заказ не отправлен — проверьте сеть и повторите")) return;
     if (!lines.length) {
       toast.error("Корзина пуста — добавьте позиции или загрузите спецификацию");
+      return;
+    }
+    if (!consent) {
+      toast.error("Подтвердите согласие на обработку персональных данных");
       return;
     }
     if (!requiredOk) {
