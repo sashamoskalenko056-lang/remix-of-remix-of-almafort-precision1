@@ -150,10 +150,13 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
       setCamError(
         isDenied
           ? "Доступ к камере запрещён системными настройками"
-          : name === "NotReadableError"
-            ? "Камера занята другим приложением"
-            : "Камера не обнаружена",
+          : name === "InsecureContextError"
+            ? "Камера работает только по защищённому соединению (HTTPS)"
+            : name === "NotReadableError"
+              ? "Камера занята другим приложением"
+              : "Камера не обнаружена",
       );
+
     }
   }, []);
 
