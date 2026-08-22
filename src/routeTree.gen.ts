@@ -38,6 +38,7 @@ import { Route as AuthenticatedAdminAlmaSecure2026SettingsRouteImport } from './
 import { Route as AuthenticatedOrdersOrderIdRouteImport } from './routes/_authenticated/orders.$orderId'
 import { Route as ApiAdminCatalogSyncRouteImport } from './routes/api/admin/catalog-sync'
 import { Route as ApiAuthOtpRequestRouteImport } from './routes/api/auth/otp-request'
+import { Route as ApiAuthOtpVerifyRouteImport } from './routes/api/auth/otp-verify'
 import { Route as ApiCheckoutSubmitRouteImport } from './routes/api/checkout/submit'
 import { Route as ApiConfiguratorSolveRouteImport } from './routes/api/configurator/solve'
 import { Route as ApiDadataCityRouteImport } from './routes/api/dadata/city'
@@ -208,6 +209,11 @@ const ApiAuthOtpRequestRoute = ApiAuthOtpRequestRouteImport.update({
   path: '/api/auth/otp-request',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthOtpVerifyRoute = ApiAuthOtpVerifyRouteImport.update({
+  id: '/api/auth/otp-verify',
+  path: '/api/auth/otp-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCheckoutSubmitRoute = ApiCheckoutSubmitRouteImport.update({
   id: '/api/checkout/submit',
   path: '/api/checkout/submit',
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/api/admin/catalog-sync': typeof ApiAdminCatalogSyncRoute
   '/api/auth/otp-request': typeof ApiAuthOtpRequestRoute
+  '/api/auth/otp-verify': typeof ApiAuthOtpVerifyRoute
   '/api/checkout/submit': typeof ApiCheckoutSubmitRoute
   '/api/configurator/solve': typeof ApiConfiguratorSolveRoute
   '/api/dadata/city': typeof ApiDadataCityRoute
@@ -363,6 +370,7 @@ export interface FileRoutesByTo {
   '/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/api/admin/catalog-sync': typeof ApiAdminCatalogSyncRoute
   '/api/auth/otp-request': typeof ApiAuthOtpRequestRoute
+  '/api/auth/otp-verify': typeof ApiAuthOtpVerifyRoute
   '/api/checkout/submit': typeof ApiCheckoutSubmitRoute
   '/api/configurator/solve': typeof ApiConfiguratorSolveRoute
   '/api/dadata/city': typeof ApiDadataCityRoute
@@ -411,6 +419,7 @@ export interface FileRoutesById {
   '/_authenticated/orders/$orderId': typeof AuthenticatedOrdersOrderIdRoute
   '/api/admin/catalog-sync': typeof ApiAdminCatalogSyncRoute
   '/api/auth/otp-request': typeof ApiAuthOtpRequestRoute
+  '/api/auth/otp-verify': typeof ApiAuthOtpVerifyRoute
   '/api/checkout/submit': typeof ApiCheckoutSubmitRoute
   '/api/configurator/solve': typeof ApiConfiguratorSolveRoute
   '/api/dadata/city': typeof ApiDadataCityRoute
@@ -459,6 +468,7 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/api/admin/catalog-sync'
     | '/api/auth/otp-request'
+    | '/api/auth/otp-verify'
     | '/api/checkout/submit'
     | '/api/configurator/solve'
     | '/api/dadata/city'
@@ -503,6 +513,7 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/api/admin/catalog-sync'
     | '/api/auth/otp-request'
+    | '/api/auth/otp-verify'
     | '/api/checkout/submit'
     | '/api/configurator/solve'
     | '/api/dadata/city'
@@ -550,6 +561,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orders/$orderId'
     | '/api/admin/catalog-sync'
     | '/api/auth/otp-request'
+    | '/api/auth/otp-verify'
     | '/api/checkout/submit'
     | '/api/configurator/solve'
     | '/api/dadata/city'
@@ -587,6 +599,7 @@ export interface RootRouteChildren {
   SitemapProductsPageRoute: typeof SitemapProductsPageRoute
   ApiAdminCatalogSyncRoute: typeof ApiAdminCatalogSyncRoute
   ApiAuthOtpRequestRoute: typeof ApiAuthOtpRequestRoute
+  ApiAuthOtpVerifyRoute: typeof ApiAuthOtpVerifyRoute
   ApiCheckoutSubmitRoute: typeof ApiCheckoutSubmitRoute
   ApiConfiguratorSolveRoute: typeof ApiConfiguratorSolveRoute
   ApiDadataCityRoute: typeof ApiDadataCityRoute
@@ -809,6 +822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthOtpRequestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/otp-verify': {
+      id: '/api/auth/otp-verify'
+      path: '/api/auth/otp-verify'
+      fullPath: '/api/auth/otp-verify'
+      preLoaderRoute: typeof ApiAuthOtpVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/checkout/submit': {
       id: '/api/checkout/submit'
       path: '/api/checkout/submit'
@@ -1007,6 +1027,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapProductsPageRoute: SitemapProductsPageRoute,
   ApiAdminCatalogSyncRoute: ApiAdminCatalogSyncRoute,
   ApiAuthOtpRequestRoute: ApiAuthOtpRequestRoute,
+  ApiAuthOtpVerifyRoute: ApiAuthOtpVerifyRoute,
   ApiCheckoutSubmitRoute: ApiCheckoutSubmitRoute,
   ApiConfiguratorSolveRoute: ApiConfiguratorSolveRoute,
   ApiDadataCityRoute: ApiDadataCityRoute,
