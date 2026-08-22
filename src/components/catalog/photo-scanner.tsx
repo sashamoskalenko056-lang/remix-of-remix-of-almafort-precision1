@@ -340,14 +340,17 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
 
     const prepared = compress(canvas, side, side);
     setFrozen(prepared.dataUrl);
+    setPreview(prepared.dataUrl);
     await analyze(prepared.dataUrl);
   };
 
   const retry = () => {
     setResult(null);
     setFrozen(null);
+    setPreview(null);
     void start();
   };
+
 
   const restart = () => {
     setPaused(false);
