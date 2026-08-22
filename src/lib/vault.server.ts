@@ -15,8 +15,8 @@ export async function secretValue(name: string): Promise<string | null> {
 
   let value: string | null = null;
   try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { db: store } = await import("@/lib/db.server");
+    const { data } = await store
       .from("app_settings")
       .select("value")
       .eq("key", `vault:${name}`)

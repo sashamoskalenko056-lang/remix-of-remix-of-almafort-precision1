@@ -35,8 +35,8 @@ export async function logAdmin(
   oldValue: unknown,
   newValue: unknown,
 ) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin.from("admin_logs").insert({
+  const { db: store } = await import("@/lib/db.server");
+  await store.from("admin_logs").insert({
     admin_id: userId,
     admin_email: email,
     action,

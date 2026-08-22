@@ -41,8 +41,8 @@ export const Route = createFileRoute("/api/leads/bulk")({
           ? `Запрос превышает текущий складской остаток (${stock.toLocaleString("ru-RU")} шт) — требуется дозаказ на производстве`
           : null;
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { error } = await supabaseAdmin.from("bulk_requests").insert({
+        const { db: store } = await import("@/lib/db.server");
+        const { error } = await store.from("bulk_requests").insert({
           sku: d.sku,
           product_name: d.product_name,
           base_price: d.base_price,

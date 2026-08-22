@@ -117,8 +117,8 @@ export const Route = createFileRoute("/api/public/send-mail")({
         try {
           if (body.type === "registration") {
             await ensureServerWebSocket();
-            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            const { error } = await supabaseAdmin.auth.admin.createUser({
+            const { db: store } = await import("@/lib/db.server");
+            const { error } = await store.auth.admin.createUser({
               email: body.email,
               password: body.password,
               email_confirm: true,
@@ -138,8 +138,8 @@ export const Route = createFileRoute("/api/public/send-mail")({
 
           if (body.type === "recovery" || body.type === "magiclink") {
             await ensureServerWebSocket();
-            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+            const { db: store } = await import("@/lib/db.server");
+            const { data, error } = await store.auth.admin.generateLink({
               type: body.type === "recovery" ? "recovery" : "magiclink",
               email: body.email,
               options: {

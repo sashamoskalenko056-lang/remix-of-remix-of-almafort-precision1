@@ -13,8 +13,8 @@ const COST_PER_1K_OUT = 0.01;
 /** Активная версия системного промпта из редактора админки (или null). */
 export async function activePrompt(slot: "configurator" | "vision"): Promise<string | null> {
   try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { db: store } = await import("@/lib/db.server");
+    const { data } = await store
       .from("llm_prompts")
       .select("content")
       .eq("slot", slot)
@@ -40,11 +40,11 @@ export async function logLlmCall(entry: {
   usage: LlmUsage;
 }) {
   try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { db: store } = await import("@/lib/db.server");
     const cost =
       (entry.usage.prompt_tokens / 1000) * COST_PER_1K_IN +
       (entry.usage.completion_tokens / 1000) * COST_PER_1K_OUT;
-    await supabaseAdmin.from("llm_logs").insert({
+    await store.from("llm_logs").insert({
       kind: entry.kind,
       prompt: entry.prompt.slice(0, 4000),
       response: entry.response.slice(0, 8000),

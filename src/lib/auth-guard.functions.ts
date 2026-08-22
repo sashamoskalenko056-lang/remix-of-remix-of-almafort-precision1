@@ -40,8 +40,8 @@ export const reportLoginFailure = createServerFn({ method: "POST" })
     if (blocked) {
       // Владелец аккаунта и владелец платформы должны узнать о переборе.
       try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        await supabaseAdmin.from("admin_logs").insert({
+        const { db: store } = await import("@/lib/db.server");
+        await store.from("admin_logs").insert({
           action: "login_bruteforce_block",
           target: data.email,
           new_value: { ip, blocked_minutes: 15 },

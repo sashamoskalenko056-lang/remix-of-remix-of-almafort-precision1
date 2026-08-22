@@ -33,12 +33,12 @@ export const Route = createFileRoute("/api/public/erp/status")({
         const status = ERP_STATUS_MAP[body.status];
         if (!status) return Response.json({ error: "Неизвестный статус" }, { status: 400 });
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { db: store } = await import("@/lib/db.server");
         const patch: Record<string, unknown> = { status };
         if (body.trackingNumber) patch["tracking_number"] = body.trackingNumber;
         if (status === "closed") patch["closed_at"] = new Date().toISOString();
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await store
           .from("orders")
           .update(patch as never)
           .eq("number", body.orderNumber)

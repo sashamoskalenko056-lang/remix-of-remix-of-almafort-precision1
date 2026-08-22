@@ -26,8 +26,8 @@ const MAX_ATTEMPTS = 96; // сутки повторов с шагом 15 мин�
 const RETRY_MS = 15 * 60 * 1000;
 
 async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin;
+  const { db: store } = await import("@/lib/db.server");
+  return store;
 }
 
 async function credentials() {
