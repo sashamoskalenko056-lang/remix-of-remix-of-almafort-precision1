@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { Loader2, Mail, ShieldCheck } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { BackLink } from "@/components/back-link";
-import { supabase } from "@/integrations/supabase/client";
+import { signIn, signUp, verifyEmail } from "@/lib/auth.functions";
+import { readSession, writeSession } from "@/lib/session";
 import { ConsentCheckbox } from "@/components/consent-checkbox";
 import { authErrorField, authErrorMessage } from "@/lib/auth-errors";
 import { useServerFn } from "@tanstack/react-start";
@@ -68,26 +69,25 @@ function AuthPage() {
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    const tokenHash = url.searchParams.get("token_hash");
-    const type = url.searchParams.get("type");
+    // Одноразовые ссылки из наших писем: ?token=... (вход по ссылке) и ?verify=... (подтверждение).
+    const linkToken = url.searchParams.get("token") ?? url.searchParams.get("verify");
     void (async () => {
-      if (tokenHash && type === "magiclink") {
-        const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
-        url.searchParams.delete("token_hash");
+      if (linkToken) {
+        url.searchParams.delete("token");
+        url.searchParams.delete("verify");
         url.searchParams.delete("type");
         window.history.replaceState(null, "", url.pathname + url.search);
-        if (error) {
-          toast.error("Ссылка для входа недействительна или истекла");
+        try {
+          const res = await verifyEmail({ data: { token: linkToken } });
+          writeSession({ token: res.token, expiresAt: res.expiresAt, user: res.user });
+          void navigate({ to: "/cabinet", replace: true });
           return;
+        } catch {
+          toast.error("Ссылка недействительна или истекла");
         }
       }
-      const { data } = await supabase.auth.getSession();
-      if (data.session) void navigate({ to: "/cabinet", replace: true });
+      if (readSession()) void navigate({ to: "/cabinet", replace: true });
     })();
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) void navigate({ to: "/cabinet", replace: true });
-    });
-    return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
   const submit = async () => {
@@ -130,11 +130,14 @@ function AuthPage() {
           toast.error(`Слишком много попыток входа. Повторите через ${min} мин.`);
           return;
         }
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) {
+        try {
+          const session = await signIn({ data: { email: email.trim(), password } });
+          writeSession({
+            token: session.token,
+            expiresAt: session.expiresAt,
+            user: session.user,
+          });
+        } catch (error) {
           const res = await reportFailure({ data: { email: email.trim() } }).catch(() => null);
           if (res?.blocked) {
             toast.error("Вход заблокирован на 15 минут. Владелец аккаунта уведомлён.");
@@ -144,29 +147,20 @@ function AuthPage() {
           return;
         }
         void reportSuccess({ data: { email: email.trim() } }).catch(() => null);
+        void navigate({ to: "/cabinet", replace: true });
       }
 
       if (mode === "register") {
-        const registration = await fetch("/api/public/send-mail", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            type: "registration",
-            email: email.trim(),
-            password,
-            name: name.trim(),
-          }),
-        });
-        if (!registration.ok) {
-          const payload = (await registration.json().catch(() => null)) as { error?: string } | null;
-          fail(new Error(payload?.error ?? "Не удалось создать аккаунт"));
-          return;
-        }
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) {
+        try {
+          const session = await signUp({
+            data: { email: email.trim(), password, fullName: name.trim() || undefined },
+          });
+          writeSession({
+            token: session.token,
+            expiresAt: session.expiresAt,
+            user: session.user,
+          });
+        } catch (error) {
           fail(error);
           return;
         }

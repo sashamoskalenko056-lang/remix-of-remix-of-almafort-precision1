@@ -2,7 +2,8 @@ import { formatPhone } from "@/lib/phone";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSwipeClose } from "@/lib/use-swipe-close";
-import { supabase } from "@/integrations/supabase/client";
+import { getCabinet } from "@/lib/cabinet.functions";
+import { currentUser } from "@/lib/session";
 import type { Product } from "@/data/catalog";
 import { formatPrice } from "@/lib/pricing";
 
@@ -46,24 +47,20 @@ export function BulkRequestDialog({
     if (!open) return;
     let alive = true;
     (async () => {
-      const { data: sess } = await supabase.auth.getSession();
-      const uid = sess.session?.user.id;
-      if (!uid || !alive) return;
-      setEmail((e) => e || sess.session?.user.email || "");
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, phone")
-        .eq("id", uid)
-        .maybeSingle();
-      const { data: company } = await supabase
-        .from("companies")
-        .select("inn")
-        .eq("user_id", uid)
-        .maybeSingle();
-      if (!alive) return;
-      if (profile?.full_name) setName((v) => v || profile.full_name!);
-      if (profile?.phone) setPhone((v) => v || profile.phone!);
-      if (company?.inn) setInn((v) => v || company.inn!);
+      const user = currentUser();
+      if (!user || !alive) return;
+      setEmail((e) => e || user.email);
+      try {
+        const data = await getCabinet();
+        if (!alive) return;
+        const profile = data.profile as { full_name?: string; phone?: string } | null;
+        const company = data.companies[0] as { inn?: string } | undefined;
+        if (profile?.full_name) setName((v) => v || profile.full_name!);
+        if (profile?.phone) setPhone((v) => v || profile.phone!);
+        if (company?.inn) setInn((v) => v || company.inn!);
+      } catch {
+        // Не авторизован или сессия истекла — форма заполняется вручную.
+      }
     })();
     return () => {
       alive = false;
