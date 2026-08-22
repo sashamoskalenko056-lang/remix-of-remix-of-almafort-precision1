@@ -599,7 +599,7 @@ export function CartPanel() {
           />
         </div>
 
-        <div className="hidden md:block rounded-md bg-[#F8F9FA] p-5">
+        <div className="rounded-md bg-[#F8F9FA] p-5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Товары</span>
             <span className="tabular-nums text-foreground">{money(goods)}</span>
