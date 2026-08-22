@@ -545,10 +545,24 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
 
       {cameraMode && camError && !showSheet && (
         <div className="flex h-full w-full flex-col items-center justify-center gap-5 px-6 text-center">
-          <span className="grid size-16 place-items-center rounded-full bg-white/10 text-white">
-            <CameraOff className="size-8" strokeWidth={1.5} />
-          </span>
+          {preview ? (
+            <img
+              src={preview}
+              alt="Загруженное фото детали"
+              className="h-40 w-40 rounded-xl object-cover"
+            />
+          ) : (
+            <span className="grid size-16 place-items-center rounded-full bg-white/10 text-white">
+              <CameraOff className="size-8" strokeWidth={1.5} />
+            </span>
+          )}
+          {(fatal ?? shake) && (
+            <p className="max-w-[46ch] rounded-md bg-[#F59E0B]/15 px-4 py-3 text-sm font-semibold leading-[1.5] text-[#FBBF24]">
+              {fatal ?? shake}
+            </p>
+          )}
           <p className="max-w-[46ch] text-base leading-[1.6] text-white/85">
+
             {denied
               ? "Доступ к камере запрещён системными настройками. Чтобы ИИ смог распознать деталь, разрешите доступ к камере в настройках браузера либо загрузите готовое фото из галереи."
               : `${camError}. Загрузите фото из галереи — распознавание работает и по снимку.`}
