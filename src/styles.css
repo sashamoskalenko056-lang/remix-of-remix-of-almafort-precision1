@@ -420,6 +420,8 @@ summary {
   --safe-b: env(safe-area-inset-bottom, 0px);
   /* Полная высота нижней навигации вместе с safe-area — единый источник правды */
   --tabbar-total: calc(var(--tabbar-h) + var(--safe-b));
+  /* Высота липкой панели «Итого» на странице корзины (без safe-area) */
+  --cart-total-h: 5rem;
 }
 
 /* На десктопе таббара нет — обнуляем отступы */
