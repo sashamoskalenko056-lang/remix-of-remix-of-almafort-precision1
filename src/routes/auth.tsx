@@ -67,9 +67,23 @@ function AuthPage() {
   const reportSuccess = useServerFn(reportLoginSuccess);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    const url = new URL(window.location.href);
+    const tokenHash = url.searchParams.get("token_hash");
+    const type = url.searchParams.get("type");
+    void (async () => {
+      if (tokenHash && type === "magiclink") {
+        const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+        url.searchParams.delete("token_hash");
+        url.searchParams.delete("type");
+        window.history.replaceState(null, "", url.pathname + url.search);
+        if (error) {
+          toast.error("Ссылка для входа недействительна или истекла");
+          return;
+        }
+      }
+      const { data } = await supabase.auth.getSession();
       if (data.session) void navigate({ to: "/cabinet", replace: true });
-    });
+    })();
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) void navigate({ to: "/cabinet", replace: true });
     });
@@ -137,7 +151,6 @@ function AuthPage() {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/cabinet`,
             data: { full_name: name.trim() },
           },
         });
@@ -145,17 +158,21 @@ function AuthPage() {
           fail(error);
           return;
         }
-        // Пока письмо не подтверждено, сессии нет — кабинет закрыт.
-        if (!data.session) setSentKind("verify");
+        if (!data.session) {
+          fail(new Error("Регистрация завершена, но сессия не создана. Попробуйте войти."));
+          return;
+        }
+        void navigate({ to: "/cabinet", replace: true });
       }
 
       if (mode === "magic") {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: { emailRedirectTo: `${window.location.origin}/cabinet` },
+        const res = await fetch("/api/public/send-mail", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type: "magiclink", email: email.trim() }),
         });
-        if (error) {
-          fail(error);
+        if (!res.ok) {
+          fail(new Error("Не удалось отправить ссылку. Повторите позже."));
           return;
         }
         setSentKind("magic");

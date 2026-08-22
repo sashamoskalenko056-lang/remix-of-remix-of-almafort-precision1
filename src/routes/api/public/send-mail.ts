@@ -3,6 +3,7 @@ import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit.server";
 import {
   inviteEmail,
+  magicLinkEmail,
   noticeEmail,
   orderNotificationEmail,
   recoveryEmail,
@@ -23,6 +24,11 @@ import { ensureServerWebSocket } from "@/lib/ws-polyfill.server";
 
 const RecoverySchema = z.object({
   type: z.literal("recovery"),
+  email: z.string().email().max(200),
+});
+
+const MagicLinkSchema = z.object({
+  type: z.literal("magiclink"),
   email: z.string().email().max(200),
 });
 
@@ -50,6 +56,7 @@ const NoticeSchema = z.object({
 
 const BodySchema = z.discriminatedUnion("type", [
   RecoverySchema,
+  MagicLinkSchema,
   InviteSchema,
   OrderSchema,
   NoticeSchema,
@@ -91,7 +98,7 @@ export const Route = createFileRoute("/api/public/send-mail")({
         if (!parsed.success) return json(request, { error: "Некорректные данные" }, 400);
         const body = parsed.data;
 
-        if (body.type !== "recovery") {
+        if (body.type !== "recovery" && body.type !== "magiclink") {
           const token = process.env["MAIL_API_TOKEN"];
           if (!token || request.headers.get("x-almafort-mail-token") !== token) {
             return json(request, { error: "Доступ запрещён" }, 401);
@@ -99,21 +106,27 @@ export const Route = createFileRoute("/api/public/send-mail")({
         }
 
         try {
-          if (body.type === "recovery") {
+          if (body.type === "recovery" || body.type === "magiclink") {
             await ensureServerWebSocket();
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-              type: "recovery",
+              type: body.type === "recovery" ? "recovery" : "magiclink",
               email: body.email,
-              options: { redirectTo: `${siteUrl()}/reset-password` },
+              options: {
+                redirectTo:
+                  body.type === "recovery" ? `${siteUrl()}/reset-password` : `${siteUrl()}/auth`,
+              },
             });
             // Не раскрываем, зарегистрирован ли адрес.
             if (error) console.error("[send-mail] generateLink:", error.message);
             const hashed = data?.properties?.hashed_token;
             if (error || !hashed) return json(request, { ok: true });
             // Ссылка строится только от PUBLIC_SITE_URL: ни одного стороннего домена в письме.
-            const link = `${siteUrl()}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
-            const mail = recoveryEmail(link);
+            const link =
+              body.type === "recovery"
+                ? `${siteUrl()}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery`
+                : `${siteUrl()}/auth?token_hash=${encodeURIComponent(hashed)}&type=magiclink`;
+            const mail = body.type === "recovery" ? recoveryEmail(link) : magicLinkEmail(link);
             await sendMail({ to: body.email, ...mail });
             return json(request, { ok: true });
           }

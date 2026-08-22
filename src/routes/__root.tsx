@@ -15,6 +15,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { ClientOnly } from "@/components/client-only";
 import { registerServiceWorker } from "@/lib/pwa";
 
 
@@ -201,7 +202,11 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <MaintenanceGate />
-      {!hideTabBar && <MobileTabBar />}
+      {!hideTabBar && (
+        <ClientOnly>
+          <MobileTabBar />
+        </ClientOnly>
+      )}
       <Toaster />
     </QueryClientProvider>
   );

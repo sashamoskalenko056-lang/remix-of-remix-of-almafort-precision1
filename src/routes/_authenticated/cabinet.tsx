@@ -22,7 +22,8 @@ import { InnField, type Party } from "@/components/inn-field";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { STAGES, TIER_META, stageIndex, tierProgress, type LoyaltyTier } from "@/lib/loyalty";
-import { addCompanyByInn, getCabinet, removeCompany, repeatOrder } from "@/lib/cabinet.functions";
+import { addCompanyByInn, removeCompany, repeatOrder } from "@/lib/cabinet.functions";
+import { getCabinetFromBrowser } from "@/lib/cabinet-client";
 import { supabase } from "@/integrations/supabase/client";
 import { isAuthError } from "@/lib/auth-error";
 import { COMPANY } from "@/lib/company";
@@ -48,7 +49,6 @@ export const Route = createFileRoute("/_authenticated/cabinet")({
 });
 
 function CabinetPage() {
-  const fetchCabinet = useServerFn(getCabinet);
   const addCompany = useServerFn(addCompanyByInn);
   const dropCompany = useServerFn(removeCompany);
   const repeat = useServerFn(repeatOrder);
@@ -58,7 +58,7 @@ function CabinetPage() {
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["cabinet"],
-    queryFn: () => fetchCabinet(),
+    queryFn: getCabinetFromBrowser,
     // Истёкшую сессию бессмысленно ретраить — уводим на /auth.
     retry: (count, err) => !isAuthError(err) && count < 2,
     // Возврат в кабинет из каталога не должен снова блокировать экран.
