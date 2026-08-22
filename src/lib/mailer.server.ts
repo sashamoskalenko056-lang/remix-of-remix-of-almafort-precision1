@@ -74,6 +74,8 @@ export function smtpConfig() {
     auth: { user: requireEnv("SMTP_USER"), pass: requireEnv("SMTP_PASS") },
     pool: true,
     maxConnections: 3,
+    // Форсируем IPv4: на VPS с частичным IPv6-стеком Node иначе падает с ENETUNREACH.
+    family: 4 as const,
     // Без явных таймаутов зависший SMTP держит запрос до таймаута nginx.
     connectionTimeout: 15_000,
     greetingTimeout: 10_000,
