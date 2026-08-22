@@ -2,7 +2,15 @@ import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/r
 
 import { renderErrorPage } from "./lib/error-page";
 import { maintenanceResponse, trailingSlashRedirect } from "./lib/seo-guard.server";
+import { ensureServerWebSocket } from "./lib/ws-polyfill.server";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+
+// Node < 22 без глобального WebSocket роняет supabase-js на createClient —
+// подставляем полифилл до любого серверного кода (SSR и server functions).
+const wsMiddleware = createMiddleware().server(async ({ next }) => {
+  await ensureServerWebSocket();
+  return next();
+});
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -38,5 +46,5 @@ const seoGuardMiddleware = createMiddleware().server(async ({ next, request }) =
 
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware, csrfMiddleware, seoGuardMiddleware],
+  requestMiddleware: [wsMiddleware, errorMiddleware, csrfMiddleware, seoGuardMiddleware],
 }));
