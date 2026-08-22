@@ -101,7 +101,16 @@ export async function requestOtp(emailRaw: string, ip: string): Promise<RequestR
 
   const { sendMail, otpEmail } = await import("@/lib/mailer.server");
   const tpl = otpEmail(code);
-  await sendMail({ to: email, subject: tpl.subject, html: tpl.html });
+  try {
+    await sendMail({ to: email, subject: tpl.subject, html: tpl.html });
+  } catch (e) {
+    // На стенде без SMTP код выводим в лог сервера, чтобы вход был возможен.
+    if (!process.env["SMTP_HOST"]) {
+      console.warn(`[otp] SMTP не настроен, код для ${email}: ${code}`);
+    } else {
+      throw e;
+    }
+  }
 
   return { ok: true, ttl: OTP_TTL_SEC };
 }

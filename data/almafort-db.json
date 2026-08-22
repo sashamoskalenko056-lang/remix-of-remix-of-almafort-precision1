@@ -147,5 +147,18 @@
       "used": false
     }
   ],
+  "otp_codes": [
+    {
+      "id": "9d18a8fb-b8dd-47ba-8061-5b5d844b8c94",
+      "created_at": "2026-08-22T16:37:38.994Z",
+      "updated_at": "2026-08-22T16:37:38.994Z",
+      "email": "qa-otp@example.com",
+      "ip": "unknown",
+      "salt": "153e53d2f84415c756efcc1ce3e56ef8",
+      "code_hash": "fd5e87e815d9c6aa3ba87fec69cdc55e72177c1e64c6b54454a3a41e02e28f0840b228d0aa857c6cfcc4cd79095a7c3db1dc12f5f1c4f3f6b8f53fa6928796c1",
+      "attempts": 0,
+      "expires_at": "2026-08-22T16:42:38.994Z"
+    }
+  ],
   "crm_queue": []
 }
