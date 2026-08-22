@@ -5,7 +5,7 @@ import { maintenanceResponse, trailingSlashRedirect } from "./lib/seo-guard.serv
 import { ensureServerWebSocket } from "./lib/ws-polyfill.server";
 import { attachAuth } from "@/lib/auth-attacher";
 
-// Node < 22 без глобального WebSocket роняет supabase-js на createClient —
+// Node < 22 без глобального WebSocket: подстраховываем библиотеки, которым он нужен —
 // подставляем полифилл до любого серверного кода (SSR и server functions).
 const wsMiddleware = createMiddleware().server(async ({ next }) => {
   await ensureServerWebSocket();
