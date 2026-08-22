@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { ConsentCheckbox } from "@/components/consent-checkbox";
+import { Field, inputClass } from "@/components/forms/field";
+import { fieldError, isFilledEmail, isFilledName, isFilledPhone } from "@/lib/required-fields";
 
 /** Модальное окно «Запросить индивидуальный расчет» для позиций без цены. */
 export function QuoteRequestModal({
@@ -14,7 +16,7 @@ export function QuoteRequestModal({
   name: string;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState({ name: "", phone: "", qty: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", qty: "" });
   const [consent, setConsent] = useState(false);
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,7 +33,9 @@ export function QuoteRequestModal({
   }, [onClose]);
 
   const valid =
-    form.name.trim().length >= 2 && form.phone.replace(/\D/g, "").length >= 10 && consent;
+    isFilledName(form.name) && isFilledPhone(form.phone) && isFilledEmail(form.email) && consent;
+  const err = (kind: "name" | "email" | "phone", value: string) =>
+    tried ? fieldError(kind, value) : null;
 
   const submit = async () => {
     setTried(true);
@@ -44,6 +48,7 @@ export function QuoteRequestModal({
         body: JSON.stringify({
           name: form.name,
           phone: form.phone,
+          email: form.email,
           quiz_answers: {
             Тип: "Запрос индивидуального расчёта",
             Артикул: sku,
@@ -92,29 +97,56 @@ export function QuoteRequestModal({
         </p>
 
         <div className="mt-5 grid gap-3">
-          <input
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Имя*"
-            className="h-11 rounded-sm border border-[#D1D5DB] px-3 text-sm outline-none focus:border-primary"
-          />
-          <input
-            value={form.phone}
-            inputMode="tel"
-            onChange={(e) => setForm((f) => ({ ...f, phone: formatPhone(e.target.value) }))}
-            type="tel"
-            autoComplete="tel"
-            maxLength={18}
-            placeholder="Телефон*"
-            className="h-11 rounded-sm border border-[#D1D5DB] px-3 text-sm tabular-nums outline-none focus:border-primary"
-          />
-          <input
-            value={form.qty}
-            inputMode="numeric"
-            onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value.replace(/\D/g, "") }))}
-            placeholder="Требуемое количество, шт"
-            className="h-11 rounded-sm border border-[#D1D5DB] px-3 text-sm tabular-nums outline-none focus:border-primary"
-          />
+          <Field label="Имя и фамилия" required error={err("name", form.name)}>
+            <input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              required
+              maxLength={120}
+              autoComplete="name"
+              placeholder="Имя и фамилия"
+              aria-invalid={Boolean(err("name", form.name))}
+              className={inputClass(Boolean(err("name", form.name)))}
+            />
+          </Field>
+          <Field label="Телефон" required error={err("phone", form.phone)}>
+            <input
+              value={form.phone}
+              inputMode="tel"
+              onChange={(e) => setForm((f) => ({ ...f, phone: formatPhone(e.target.value) }))}
+              type="tel"
+              required
+              autoComplete="tel"
+              maxLength={18}
+              placeholder="+7 (___) ___-__-__"
+              aria-invalid={Boolean(err("phone", form.phone))}
+              className={inputClass(Boolean(err("phone", form.phone)), "tabular-nums")}
+            />
+          </Field>
+          <Field label="E-mail" required error={err("email", form.email)}>
+            <input
+              value={form.email}
+              inputMode="email"
+              type="email"
+              required
+              autoComplete="email"
+              maxLength={255}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              placeholder="name@company.ru"
+              aria-invalid={Boolean(err("email", form.email))}
+              className={inputClass(Boolean(err("email", form.email)))}
+            />
+          </Field>
+          <Field label="Требуемое количество, шт">
+            <input
+              value={form.qty}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value.replace(/\D/g, "") }))}
+              placeholder="например, 5000"
+              className={inputClass(false, "tabular-nums")}
+            />
+          </Field>
         </div>
 
         <ConsentCheckbox
