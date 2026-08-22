@@ -502,6 +502,8 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
                     setShake(null);
                     setFatal(null);
                     setFrozen(null);
+                    setPreview(null);
+
                   }}
                   className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-full border border-white/30 px-6 text-sm font-semibold text-white"
                 >
