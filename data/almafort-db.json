@@ -35,6 +35,15 @@
       "password_hash": "scrypt:13157de1d6ace11985ac75e265a7cca4:381a502db9a4c00f085ce6d5b20128e9f57745af05179594a3cae942633edb197f72cbcae95d4971cbc79ad37ff172f3e32bd3191bc8490e25a74e2ce5368641",
       "full_name": null,
       "email_verified": true
+    },
+    {
+      "id": "f54d8aea-02ae-4b9d-b333-f58d2baa228d",
+      "created_at": "2026-08-22T16:44:11.486Z",
+      "updated_at": "2026-08-22T16:44:11.486Z",
+      "email": "qa-user1@example.com",
+      "password_hash": "scrypt:f239944b5492287bf74bb1265ee1bbf8:3901032e7d2aaf607ed16f65fdc70ffa4d64eace23d0f128992fa2ba404e36af71cc56172b0a87cd1fac229001797b0ac9876cf261f5ac0dbd7de56ce1434110",
+      "full_name": null,
+      "email_verified": true
     }
   ],
   "profiles": [
@@ -65,6 +74,13 @@
       "updated_at": "2026-08-22T16:39:07.394Z",
       "full_name": null,
       "phone": null
+    },
+    {
+      "id": "f54d8aea-02ae-4b9d-b333-f58d2baa228d",
+      "created_at": "2026-08-22T16:44:11.488Z",
+      "updated_at": "2026-08-22T16:44:11.488Z",
+      "full_name": null,
+      "phone": null
     }
   ],
   "companies": [],
@@ -82,7 +98,7 @@
     {
       "id": "fbf6c744-4069-4a56-83b3-86c803ea1774",
       "created_at": "2026-08-22T14:34:50.592Z",
-      "updated_at": "2026-08-22T14:35:07.221Z",
+      "updated_at": "2026-08-22T16:44:34.565Z",
       "user_id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
       "lines": []
     },
@@ -91,6 +107,13 @@
       "created_at": "2026-08-22T16:39:07.578Z",
       "updated_at": "2026-08-22T16:39:09.599Z",
       "user_id": "0b640b3f-3fa9-4cc6-89b4-3d2cfc9f322e",
+      "lines": []
+    },
+    {
+      "id": "8150276f-89fb-4164-ab62-622ad8d76c6a",
+      "created_at": "2026-08-22T16:44:11.794Z",
+      "updated_at": "2026-08-22T16:44:16.591Z",
+      "user_id": "f54d8aea-02ae-4b9d-b333-f58d2baa228d",
       "lines": []
     }
   ],
