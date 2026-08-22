@@ -578,17 +578,21 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
               <CameraOff className="size-8" strokeWidth={1.5} />
             </span>
           )}
-          {(fatal ?? shake) && (
+          {desktopError && (
             <p className="max-w-[46ch] rounded-md bg-[#F59E0B]/15 px-4 py-3 text-sm font-semibold leading-[1.5] text-[#FBBF24]">
-              {fatal ?? shake}
+              {desktopError}
             </p>
           )}
-          <p className="max-w-[46ch] text-base leading-[1.6] text-white/85">
+          {/* Пояснение про камеру уместно, только пока нет вердикта по снимку:
+              иначе на телефоне поверх результата висит «камера не обнаружена». */}
+          {!desktopError && !busy && (
+            <p className="max-w-[46ch] text-base leading-[1.6] text-white/85">
+              {denied
+                ? "Доступ к камере запрещён системными настройками. Чтобы ИИ смог распознать деталь, разрешите доступ к камере в настройках браузера либо загрузите готовое фото из галереи."
+                : `${camError}. Загрузите фото из галереи — распознавание работает и по снимку.`}
+            </p>
+          )}
 
-            {denied
-              ? "Доступ к камере запрещён системными настройками. Чтобы ИИ смог распознать деталь, разрешите доступ к камере в настройках браузера либо загрузите готовое фото из галереи."
-              : `${camError}. Загрузите фото из галереи — распознавание работает и по снимку.`}
-          </p>
           {denied && (
             <div className="max-w-[46ch] rounded-md bg-white/10 p-4 text-left text-xs leading-[1.6] text-white/75">
               <p className="mb-2 font-semibold text-white">Как включить камеру</p>
