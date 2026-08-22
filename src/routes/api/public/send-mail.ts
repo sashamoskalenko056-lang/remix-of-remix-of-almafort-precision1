@@ -116,50 +116,38 @@ export const Route = createFileRoute("/api/public/send-mail")({
 
         try {
           if (body.type === "registration") {
-            await ensureServerWebSocket();
-            const { db: store } = await import("@/lib/db.server");
-            const { error } = await store.auth.admin.createUser({
+            const auth = await import("@/lib/auth.server");
+            const existing = await auth.findUserByEmail(body.email);
+            if (existing) {
+              return json(request, { error: "Аккаунт с этой почтой уже существует" }, 409);
+            }
+            await auth.createUser({
               email: body.email,
               password: body.password,
-              email_confirm: true,
-              user_metadata: { full_name: body.name },
+              fullName: body.name,
+              emailVerified: true,
             });
-            if (error) {
-              const duplicate = /already|registered|exists/i.test(error.message);
-              return json(
-                request,
-                { error: duplicate ? "Аккаунт с этой почтой уже существует" : "Не удалось создать аккаунт" },
-                duplicate ? 409 : 500,
-              );
-            }
             await sendMail({ to: body.email, ...registrationEmail() });
             return json(request, { ok: true });
           }
 
           if (body.type === "recovery" || body.type === "magiclink") {
-            await ensureServerWebSocket();
-            const { db: store } = await import("@/lib/db.server");
-            const { data, error } = await store.auth.admin.generateLink({
-              type: body.type === "recovery" ? "recovery" : "magiclink",
-              email: body.email,
-              options: {
-                redirectTo:
-                  body.type === "recovery" ? `${siteUrl()}/reset-password` : `${siteUrl()}/auth`,
-              },
-            });
+            const auth = await import("@/lib/auth.server");
+            const user = await auth.findUserByEmail(body.email);
             // Не раскрываем, зарегистрирован ли адрес.
-            if (error) console.error("[send-mail] generateLink:", error.message);
-            const hashed = data?.properties?.hashed_token;
-            if (error || !hashed) return json(request, { ok: true });
+            if (!user) return json(request, { ok: true });
+            const kind = body.type === "recovery" ? "recovery" : "magiclink";
+            const token = await auth.createActionToken(user["id"] as string, kind);
             // Ссылка строится только от PUBLIC_SITE_URL: ни одного стороннего домена в письме.
             const link =
-              body.type === "recovery"
-                ? `${siteUrl()}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery`
-                : `${siteUrl()}/auth?token_hash=${encodeURIComponent(hashed)}&type=magiclink`;
-            const mail = body.type === "recovery" ? recoveryEmail(link) : magicLinkEmail(link);
+              kind === "recovery"
+                ? `${siteUrl()}/reset-password?token=${encodeURIComponent(token)}&type=recovery`
+                : `${siteUrl()}/auth?token=${encodeURIComponent(token)}&type=magiclink`;
+            const mail = kind === "recovery" ? recoveryEmail(link) : magicLinkEmail(link);
             await sendMail({ to: body.email, ...mail });
             return json(request, { ok: true });
           }
+
 
           const mail =
             body.type === "invite"
