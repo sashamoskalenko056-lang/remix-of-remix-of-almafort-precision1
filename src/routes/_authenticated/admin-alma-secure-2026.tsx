@@ -1,4 +1,11 @@
-import { createFileRoute, Link, Outlet, notFound, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  isRedirect,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router";
 import { adminMe } from "@/lib/admin.functions";
 import { ADMIN_BASE, ROLE_LABEL, can, type AdminRole } from "@/lib/admin";
 import { Skeleton } from "@/components/ui/skeleton";
