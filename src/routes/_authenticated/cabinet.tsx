@@ -139,7 +139,14 @@ function CabinetPage() {
   if (error || !data) {
     return (
       <Shell>
-        <p className="text-sm text-primary">Не удалось загрузить кабинет. Обновите страницу.</p>
+        <p className="text-sm text-primary">Не удалось загрузить кабинет.</p>
+        <button
+          type="button"
+          onClick={() => void qc.invalidateQueries({ queryKey: ["cabinet"] })}
+          className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+        >
+          <RefreshCw className="size-4" /> Повторить
+        </button>
       </Shell>
     );
   }
