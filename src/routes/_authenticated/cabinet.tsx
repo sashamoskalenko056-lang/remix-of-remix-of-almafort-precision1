@@ -55,7 +55,7 @@ function CabinetPage() {
   const navigate = useNavigate();
   const addLine = useCart((s) => s.addLine);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["cabinet"],
     queryFn: () => fetchCabinet(),
     // Истёкшую сессию бессмысленно ретраить — уводим на /auth.
