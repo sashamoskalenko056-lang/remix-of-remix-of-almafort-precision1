@@ -6,6 +6,7 @@ import {
   magicLinkEmail,
   noticeEmail,
   orderNotificationEmail,
+  registrationEmail,
   recoveryEmail,
   sendMail,
   siteUrl,
@@ -30,6 +31,13 @@ const RecoverySchema = z.object({
 const MagicLinkSchema = z.object({
   type: z.literal("magiclink"),
   email: z.string().email().max(200),
+});
+
+const RegistrationSchema = z.object({
+  type: z.literal("registration"),
+  email: z.string().email().max(200),
+  password: z.string().min(8).max(128),
+  name: z.string().trim().min(2).max(120),
 });
 
 const InviteSchema = z.object({
@@ -57,6 +65,7 @@ const NoticeSchema = z.object({
 const BodySchema = z.discriminatedUnion("type", [
   RecoverySchema,
   MagicLinkSchema,
+  RegistrationSchema,
   InviteSchema,
   OrderSchema,
   NoticeSchema,
@@ -98,7 +107,7 @@ export const Route = createFileRoute("/api/public/send-mail")({
         if (!parsed.success) return json(request, { error: "Некорректные данные" }, 400);
         const body = parsed.data;
 
-        if (body.type !== "recovery" && body.type !== "magiclink") {
+        if (body.type !== "recovery" && body.type !== "magiclink" && body.type !== "registration") {
           const token = process.env["MAIL_API_TOKEN"];
           if (!token || request.headers.get("x-almafort-mail-token") !== token) {
             return json(request, { error: "Доступ запрещён" }, 401);
@@ -106,6 +115,27 @@ export const Route = createFileRoute("/api/public/send-mail")({
         }
 
         try {
+          if (body.type === "registration") {
+            await ensureServerWebSocket();
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { error } = await supabaseAdmin.auth.admin.createUser({
+              email: body.email,
+              password: body.password,
+              email_confirm: true,
+              user_metadata: { full_name: body.name },
+            });
+            if (error) {
+              const duplicate = /already|registered|exists/i.test(error.message);
+              return json(
+                request,
+                { error: duplicate ? "Аккаунт с этой почтой уже существует" : "Не удалось создать аккаунт" },
+                duplicate ? 409 : 500,
+              );
+            }
+            await sendMail({ to: body.email, ...registrationEmail() });
+            return json(request, { ok: true });
+          }
+
           if (body.type === "recovery" || body.type === "magiclink") {
             await ensureServerWebSocket();
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

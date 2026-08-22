@@ -204,6 +204,18 @@ export function magicLinkEmail(link: string): { subject: string; html: string } 
   };
 }
 
+export function registrationEmail(): { subject: string; html: string } {
+  return {
+    subject: `${BRAND} — кабинет создан`,
+    html: layout(
+      "Кабинет создан",
+      `<h1 style="margin:0 0 12px;font-size:20px;">Добро пожаловать в ${BRAND}</h1>
+       <p style="margin:0;">Ваш B2B-кабинет создан. Теперь вы можете войти с указанными при регистрации почтой и паролем.</p>
+       ${button(`${siteUrl()}/auth`, "Войти в кабинет")}`,
+    ),
+  };
+}
+
 export function inviteEmail(link: string, company?: string): { subject: string; html: string } {
   return {
     subject: `${BRAND} — приглашение в B2B-кабинет`,

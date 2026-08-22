@@ -147,19 +147,27 @@ function AuthPage() {
       }
 
       if (mode === "register") {
-        const { data, error } = await supabase.auth.signUp({
+        const registration = await fetch("/api/public/send-mail", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            type: "registration",
+            email: email.trim(),
+            password,
+            name: name.trim(),
+          }),
+        });
+        if (!registration.ok) {
+          const payload = (await registration.json().catch(() => null)) as { error?: string } | null;
+          fail(new Error(payload?.error ?? "Не удалось создать аккаунт"));
+          return;
+        }
+        const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
-          options: {
-            data: { full_name: name.trim() },
-          },
         });
         if (error) {
           fail(error);
-          return;
-        }
-        if (!data.session) {
-          fail(new Error("Регистрация завершена, но сессия не создана. Попробуйте войти."));
           return;
         }
         void navigate({ to: "/cabinet", replace: true });
