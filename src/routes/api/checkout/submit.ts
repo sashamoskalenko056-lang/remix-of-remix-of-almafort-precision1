@@ -87,6 +87,14 @@ export const Route = createFileRoute("/api/checkout/submit")({
               ? e.issues.map((i) => `${i.path.join(".") || "форма"}: ${i.message}`)
               : [String(e)];
           console.error("[checkout] validation failed", issues);
+          // Недобор обязательных реквизитов — единый отбойник 400.
+          const requiredPaths = ["customer.name", "customer.phone", "customer.email", "inn"];
+          if (
+            e instanceof z.ZodError &&
+            e.issues.some((i) => requiredPaths.includes(i.path.join(".")))
+          ) {
+            return requiredFieldsResponse();
+          }
           return Response.json(
             { error: `Проверьте данные заказа — ${issues.join("; ")}`, detail: issues },
             { status: 400 },

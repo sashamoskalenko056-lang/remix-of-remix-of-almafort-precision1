@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { requiredFieldsResponse, zEmail, zName, zPhone } from "@/lib/required-fields";
 import { verifyRecaptcha } from "@/lib/recaptcha.server";
 import { pushQuizLead } from "@/lib/quiz-crm.server";
 
 const schema = z.object({
-  name: z.string().trim().min(2).max(80),
-  phone: z.string().trim().min(10).max(24),
-  email: z.string().trim().email().max(255).optional(),
+  // ФИО, телефон и почта — обязательный минимум по любой заявке.
+  name: zName,
+  phone: zPhone,
+  email: zEmail,
   quiz_answers: z.record(z.string().max(120), z.string().max(500)).default({}),
   file_urls: z.array(z.string().url().max(600)).max(10).default([]),
   token: z.string().max(4000).optional(),
@@ -19,6 +21,9 @@ export const Route = createFileRoute("/api/quiz/submit")({
         const raw = await request.json().catch(() => null);
         const parsed = schema.safeParse(raw);
         if (!parsed.success) {
+          const required = ["name", "phone", "email"];
+          if (parsed.error.issues.some((i) => required.includes(String(i.path[0]))))
+            return requiredFieldsResponse();
           return Response.json({ error: "Некорректные данные формы" }, { status: 400 });
         }
         const { token, ...lead } = parsed.data;
@@ -33,7 +38,7 @@ export const Route = createFileRoute("/api/quiz/submit")({
         const crm = await pushQuizLead({
           name: lead.name,
           phone: lead.phone,
-          ...(lead.email ? { email: lead.email } : {}),
+          email: lead.email,
           quiz_answers: lead.quiz_answers,
           file_urls: lead.file_urls,
         });
