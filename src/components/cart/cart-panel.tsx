@@ -507,23 +507,8 @@ export function CartPanel() {
 
         </div>
 
-        {!authed && (
-          <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
-            <p className="text-sm font-semibold text-foreground">
-              Войдите в B2B-кабинет перед оформлением
-            </p>
-            <p className="mt-1.5 text-xs leading-[1.5] text-muted-foreground">
-              Реквизиты подставятся автоматически, заказ попадёт в трекинг, а грейд закрепит оптовую
-              колонку цен на весь объём.
-            </p>
-            <a
-              href="/auth"
-              className="mt-3 inline-flex items-center rounded-sm border border-primary px-4 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-            >
-              Войти или создать кабинет
-            </a>
-          </div>
-        )}
+
+
 
         {/* Правая колонка: контакты и итог идут одной стопкой, чтобы итог не уезжал под доставку */}
         <div className="flex flex-col gap-6 lg:col-start-2 lg:row-start-1">
@@ -599,7 +584,7 @@ export function CartPanel() {
           />
         </div>
 
-        <div className="hidden md:block rounded-md bg-[#F8F9FA] p-5">
+        <div className="rounded-md bg-[#F8F9FA] p-5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Товары</span>
             <span className="tabular-nums text-foreground">{money(goods)}</span>
@@ -687,100 +672,28 @@ export function CartPanel() {
           )}
         </div>
 
-        {lines.length > 0 && (
-          <div className="md:hidden rounded-md border border-border bg-[#F8F9FA] p-5">
-            <ConsentCheckbox
-              id="consent-cart-mobile"
-              checked={consent}
-              onChange={setConsent}
-              invalid={triedSubmit && !consent}
-            />
-
-            {authed && minColumn > 0 && (
-              <p className="mt-4 rounded-sm bg-[#E8F5E9] px-3 py-2 text-xs leading-[1.5] text-foreground">
-                Статус «{TIER_META[tier].name}»: цены пересчитаны по колонке «Опт {minColumn}» на весь
-                объём партии.
-              </p>
-            )}
-            {credit && (
-              <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs leading-[1.5] text-foreground">
-                <input
-                  type="checkbox"
-                  checked={deferred}
-                  onChange={(e) => setDeferred(e.target.checked)}
-                  className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--primary)]"
-                />
-                Отгрузить с отсрочкой платежа (15–30 дней по договору)
-              </label>
-            )}
-
-            {unverified && (
-              <p className="mt-4 rounded-sm border border-primary/40 bg-primary/5 px-3 py-2 text-xs leading-[1.5] text-foreground">
-                Почта не подтверждена. Откройте письмо ALMAFORT и перейдите по ссылке — оформление
-                заказов в кабинете разблокируется сразу после подтверждения.
-              </p>
-            )}
-
-            <button
-              type="button"
-              onClick={download}
-              disabled={!cartReady}
-              className="mt-5 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-sm border border-[#D1D5DB] px-4 py-3 text-[15px] font-semibold text-foreground transition-all duration-200 enabled:hover:-translate-y-px enabled:hover:border-primary enabled:hover:text-primary enabled:hover:shadow-[0_4px_12px_rgba(229,36,33,0.2)] enabled:active:translate-y-0 enabled:active:scale-[0.98] enabled:active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+        {!authed && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+            <p className="text-sm font-semibold text-foreground">
+              Войдите в B2B-кабинет перед оформлением
+            </p>
+            <p className="mt-1.5 text-xs leading-[1.5] text-muted-foreground">
+              Реквизиты подставятся автоматически, заказ попадёт в трекинг, а грейд закрепит оптовую
+              колонку цен на весь объём.
+            </p>
+            <a
+              href="/auth"
+              className="mt-3 inline-flex items-center rounded-sm border border-primary px-4 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
             >
-              <FileDown className="size-4" strokeWidth={2} />
-              {pendingQuote && lines.length ? "Считаем доставку…" : "Скачать PDF-счёт"}
-            </button>
-
-            <button
-              type="button"
-              onClick={clear}
-              className="mt-3 w-full cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-primary"
-            >
-              Очистить корзину
-            </button>
+              Войти или создать кабинет
+            </a>
           </div>
         )}
+
         </div>
       </section>
 
 
-      {/* Липкая нижняя панель оформления: итог и CTA всегда под большим пальцем */}
-      {lines.length > 0 && (
-        <div className="above-tabbar fixed inset-x-0 z-[45] border-t border-border bg-card/97 px-4 py-3 shadow-[0_-8px_24px_oklch(0_0_0/0.1)] backdrop-blur md:hidden"
-          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Итого</p>
-              <p className="truncate text-lg font-extrabold tabular-nums text-foreground">
-                {money(total)}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setTriedSubmit(true);
-                if (ctaDisabled) {
-                  toast.error(
-                    !consent
-                      ? "Подтвердите согласие на обработку данных"
-                      : unverified
-                        ? "Подтвердите почту, чтобы оформить заказ"
-                        : "Дождитесь расчёта доставки",
-                  );
-                  return;
-                }
-                void submitOrder();
-              }}
-              disabled={submitting}
-              className="flex h-12 min-w-[60%] items-center justify-center gap-2 rounded-md bg-[#10B981] px-5 text-[15px] font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
-            >
-              {submitting && <Loader2 className="size-4 animate-spin" strokeWidth={2} />}
-              {submitting ? "Отправляем…" : "Оформить заказ"}
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
 
