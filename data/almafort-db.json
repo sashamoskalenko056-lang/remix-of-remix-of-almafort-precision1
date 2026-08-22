@@ -12,11 +12,11 @@
     {
       "id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
       "created_at": "2026-08-22T14:34:50.323Z",
-      "updated_at": "2026-08-22T14:34:50.323Z",
+      "updated_at": "2026-08-22T16:39:26.006Z",
       "email": "sashamoskalenko0@gmail.com",
       "password_hash": "scrypt:18feba0b4a610c03da8a58e9893b4c11:7720c55665fd401d36695f3a8b6cea8542698bd913f840a091883d2f2f9eb827e2600c346176a0e7e7df2a5792ed3ab56230734681cfabc9768147c57a26db30",
       "full_name": "Александр Москаленко",
-      "email_verified": false
+      "email_verified": true
     },
     {
       "id": "fd144f43-93c2-47c7-b8b9-53770b4b0c42",
