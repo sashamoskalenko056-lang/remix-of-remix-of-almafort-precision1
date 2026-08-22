@@ -60,8 +60,9 @@ async function loadNodemailer(): Promise<{ createTransport: (o: unknown) => Tran
 }
 
 export function smtpConfig() {
-  const port = Number(process.env["SMTP_PORT"] ?? 465);
-  // 465 — implicit SSL/TLS (Яндекс/Mail.ru), 587 и 25 — STARTTLS поверх открытого соединения.
+  const port = Number(process.env["SMTP_PORT"] ?? 587);
+  // 587 — STARTTLS (Gmail, большинство хостингов), 465 — implicit SSL/TLS.
+  // Порт 465 часто блокируется хостингом; по умолчанию используем 587.
   const secure = (process.env["SMTP_SECURE"] ?? "").trim()
     ? /^(1|true|yes)$/i.test(process.env["SMTP_SECURE"]!)
     : port === 465;
