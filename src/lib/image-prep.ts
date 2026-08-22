@@ -3,6 +3,11 @@
 // Цель — не гонять 4K/8 МБ на сервер: на 3G это гарантированный отказ клиента.
 
 export const TARGET_SIDE = 800;
+/** Предел стороны при декодировании: телефонные 12–50 Мп рушат память Safari. */
+export const DECODE_MAX_SIDE = 1600;
+/** Жёсткий потолок полезной нагрузки: сервер режет кадры тяжелее 3 МБ. */
+export const MAX_UPLOAD_KB = 1400;
+
 
 export type Prepared = {
   dataUrl: string;
