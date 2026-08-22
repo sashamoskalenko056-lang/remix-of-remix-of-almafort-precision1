@@ -32,6 +32,7 @@ const TABLES = [
   "product_overrides",
   "user_roles",
   "password_resets",
+  "otp_codes",
   "crm_queue",
 ] as const;
 

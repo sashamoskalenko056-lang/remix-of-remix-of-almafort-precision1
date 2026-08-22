@@ -265,3 +265,37 @@ export function noticeEmail(subject: string, message: string): { subject: string
     ),
   };
 }
+
+/** Одноразовый код входа: крупные цифры, адаптивная вёрстка. */
+export function otpEmail(code: string): { subject: string; html: string } {
+  const digits = code
+    .split("")
+    .map(
+      (d) =>
+        `<td style="padding:0 6px;"><div style="width:56px;height:64px;line-height:64px;text-align:center;background:#f4f5f4;border:1px solid #d9ddd9;font-size:34px;font-weight:800;letter-spacing:.04em;">${escapeHtml(d)}</div></td>`,
+    )
+    .join("");
+  return {
+    subject: `Ваш код доступа ${BRAND}`,
+    html: layout(
+      "Код доступа",
+      `<h1 style="margin:0 0 12px;font-size:20px;">Здравствуйте!</h1>
+       <p style="margin:0 0 18px;">Для входа в личный кабинет используйте следующий одноразовый код:</p>
+       <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;"><tr>${digits}</tr></table>
+       <p style="margin:20px 0 0;font-size:13px;color:#6b706b;">Код действителен 5 минут. Если вы не запрашивали код, просто проигнорируйте это письмо.</p>`,
+    ),
+  };
+}
+
+/** Приветствие нового B2B-профиля. */
+export function welcomeEmail(): { subject: string; html: string } {
+  return {
+    subject: `Добро пожаловать в ${BRAND}`,
+    html: layout(
+      "Добро пожаловать",
+      `<h1 style="margin:0 0 12px;font-size:20px;">Аккаунт снабженца создан</h1>
+       <p style="margin:0;">Ваш аккаунт снабженца успешно создан. Теперь вам доступны ИИ-конфигуратор и история заказов.</p>
+       ${button(`${siteUrl()}/cabinet`, "Открыть кабинет")}`,
+    ),
+  };
+}
