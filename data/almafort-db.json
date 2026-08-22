@@ -26,6 +26,15 @@
       "password_hash": "scrypt:9eff701cae12f4adb95482f00c5615fc:15084adeba04d129992c72e7d3ad7091b1250036e1a65e3840821eb3e47112df0ad9d009843287fc875cb4230e6a7f87517584704e93dbccfcb6c051241226a4",
       "full_name": null,
       "email_verified": true
+    },
+    {
+      "id": "0b640b3f-3fa9-4cc6-89b4-3d2cfc9f322e",
+      "created_at": "2026-08-22T16:39:07.391Z",
+      "updated_at": "2026-08-22T16:39:07.391Z",
+      "email": "qa4@example.com",
+      "password_hash": "scrypt:13157de1d6ace11985ac75e265a7cca4:381a502db9a4c00f085ce6d5b20128e9f57745af05179594a3cae942633edb197f72cbcae95d4971cbc79ad37ff172f3e32bd3191bc8490e25a74e2ce5368641",
+      "full_name": null,
+      "email_verified": true
     }
   ],
   "profiles": [
@@ -49,6 +58,13 @@
       "updated_at": "2026-08-22T16:37:48.686Z",
       "full_name": null,
       "phone": null
+    },
+    {
+      "id": "0b640b3f-3fa9-4cc6-89b4-3d2cfc9f322e",
+      "created_at": "2026-08-22T16:39:07.394Z",
+      "updated_at": "2026-08-22T16:39:07.394Z",
+      "full_name": null,
+      "phone": null
     }
   ],
   "companies": [],
@@ -68,6 +84,13 @@
       "created_at": "2026-08-22T14:34:50.592Z",
       "updated_at": "2026-08-22T14:35:07.221Z",
       "user_id": "7602a0fc-f63d-4482-9aa3-c50b6e3a7677",
+      "lines": []
+    },
+    {
+      "id": "16781e33-8e2a-4eb8-90f5-453615ea6cab",
+      "created_at": "2026-08-22T16:39:07.578Z",
+      "updated_at": "2026-08-22T16:39:09.599Z",
+      "user_id": "0b640b3f-3fa9-4cc6-89b4-3d2cfc9f322e",
       "lines": []
     }
   ],
