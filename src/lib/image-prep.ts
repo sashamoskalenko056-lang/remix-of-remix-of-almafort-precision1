@@ -3,6 +3,11 @@
 // Цель — не гонять 4K/8 МБ на сервер: на 3G это гарантированный отказ клиента.
 
 export const TARGET_SIDE = 800;
+/** Предел стороны при декодировании: телефонные 12–50 Мп рушат память Safari. */
+export const DECODE_MAX_SIDE = 1600;
+/** Жёсткий потолок полезной нагрузки: сервер режет кадры тяжелее 3 МБ. */
+export const MAX_UPLOAD_KB = 1400;
+
 
 export type Prepared = {
   dataUrl: string;
@@ -35,8 +40,15 @@ function supportsWebp(): boolean {
 export async function decodeImageFile(
   file: File,
 ): Promise<{ source: CanvasImageSource; width: number; height: number } | null> {
-  const bitmap = await createImageBitmap(file).catch(() => null);
+  // Телефон отдаёт 12–50 Мп: полноразмерный bitmap съедает память Safari и кадр
+  // молча превращается в пустое полотно. Просим декодер сразу уменьшить картинку.
+  const bitmap =
+    (await createImageBitmap(file, {
+      resizeWidth: DECODE_MAX_SIDE,
+      resizeQuality: "high",
+    } as ImageBitmapOptions).catch(() => null)) ?? (await createImageBitmap(file).catch(() => null));
   if (bitmap) return { source: bitmap, width: bitmap.width, height: bitmap.height };
+
 
   const url = URL.createObjectURL(file);
   try {
@@ -96,14 +108,24 @@ export function compress(
   }
 
   const type = supportsWebp() ? "image/webp" : "image/jpeg";
-  const dataUrl = canvas.toDataURL(type, quality);
+  let q = quality;
+  let dataUrl = canvas.toDataURL(type, q);
+  let kb = Math.round((dataUrl.length * 0.75) / 1024);
+  // Кадры с телефона даже после ресайза бывают тяжёлыми (шум матрицы плохо жмётся):
+  // добиваем качеством, пока не влезем в лимит запроса.
+  while (kb > MAX_UPLOAD_KB && q > 0.4) {
+    q = Math.max(0.4, q - 0.15);
+    dataUrl = canvas.toDataURL(type, q);
+    kb = Math.round((dataUrl.length * 0.75) / 1024);
+  }
   return {
     dataUrl,
-    kb: Math.round((dataUrl.length * 0.75) / 1024),
+    kb,
     width: canvas.width,
     height: canvas.height,
   };
 }
+
 
 export type FrameStats = {
   /** Средняя яркость 0..255. */

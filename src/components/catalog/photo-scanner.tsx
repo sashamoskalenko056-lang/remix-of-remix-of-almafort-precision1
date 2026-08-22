@@ -243,15 +243,30 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
     setFatal(null);
     setShake(null);
     setClarified(null);
+    // Мобильная сеть умеет «подвиснуть» без ошибки: без таймера пользователь
+    // смотрит на вечный спиннер и не понимает, что произошло.
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), 120_000);
     try {
       const res = await fetch("/api/vision/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image }),
+        signal: ctrl.signal,
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? "Не удалось распознать деталь");
-      const data = json as Result;
+      const text = await res.text();
+      let json: Record<string, unknown> | null = null;
+      try {
+        json = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        json = null;
+      }
+      if (!res.ok) {
+        const detail = typeof json?.["error"] === "string" ? (json["error"] as string) : null;
+        throw new Error(detail ?? `Сервер ответил ошибкой ${res.status}`);
+      }
+      if (!json) throw new Error("Сервер вернул некорректный ответ");
+      const data = json as unknown as Result;
       setResult(data);
       setSize("");
       // Сценарии «переснимите» — камеру не глушим, клиент повторит кадр.
@@ -259,13 +274,23 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
       else setFrozen(null);
     } catch (e) {
       setFrozen(null);
-      const message = e instanceof Error ? e.message : "Ошибка распознавания";
+      const aborted = e instanceof DOMException && e.name === "AbortError";
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+      const message = aborted
+        ? "Анализ занял слишком долго — проверьте связь и повторите"
+        : offline
+          ? "Нет соединения с интернетом"
+          : e instanceof Error
+            ? e.message
+            : "Ошибка распознавания";
       setFatal(`${message}. Попробуйте загрузить другое фото или повторить попытку.`);
       toast.error(message);
     } finally {
+      window.clearTimeout(timer);
       setBusy(false);
     }
   };
+
 
   /** Загрузка картинки с диска/галереи — основной сценарий для ПК и для отказа в доступе. */
   const pickFile = async (file: File | undefined | null) => {
