@@ -271,6 +271,7 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
     setFatal(null);
     setShake(null);
     setResult(null);
+    setPreview(null);
     const heic = /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
     if (!file.type.startsWith("image/") && !heic) {
       const m = "Нужен файл изображения: JPG, PNG, WEBP или HEIC";
@@ -291,6 +292,10 @@ export function PhotoScanner({ open, onClose }: { open: boolean; onClose: () => 
     // Сжимаем на клиенте: 800×800 WebP вместо 4K/8 МБ — иначе на 3G ответа не дождаться.
     const prepared = compress(decoded.source, decoded.width, decoded.height);
     setFrozen(prepared.dataUrl);
+    // Превью загруженного файла живёт независимо от статуса анализа:
+    // клиент должен видеть, что именно он отправил, даже при ошибке.
+    setPreview(prepared.dataUrl);
+
     const stats = frameStats(decoded.source, decoded.width, decoded.height);
     const hint = lowLightHint(stats);
     if (hint) {
