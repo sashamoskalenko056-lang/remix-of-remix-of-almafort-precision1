@@ -24,7 +24,7 @@ export type RawAssetGroup = {
   slug: string;
   title: string;
   description: string | null;
-  images: unknown[];
+  images: Array<{ thumb_url: string; full_url: string; caption?: string }>;
 };
 export type RawAssetLink = { sku: string; group_id: string };
 
@@ -42,7 +42,9 @@ export const getAssetGroupsData = createServerFn({ method: "GET" }).handler(
           slug: String(g["slug"] ?? ""),
           title: String(g["title"] ?? ""),
           description: (g["description"] as string | null) ?? null,
-          images: Array.isArray(g["images"]) ? (g["images"] as unknown[]) : [],
+          images: Array.isArray(g["images"])
+            ? (g["images"] as RawAssetGroup["images"])
+            : [],
         })),
         links: (links.data ?? []).map((l: Record<string, unknown>) => ({
           sku: String(l["sku"] ?? ""),
