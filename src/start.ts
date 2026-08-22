@@ -16,6 +16,9 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
     return await next();
   } catch (error) {
+    // Ответы (401 от requireAuth, редиректы) — это не сбой: отдаём как есть,
+    // иначе клиент получает 500-страницу вместо понятного «Unauthorized».
+    if (error instanceof Response) throw error;
     if (error != null && typeof error === "object" && "statusCode" in error) {
       throw error;
     }
