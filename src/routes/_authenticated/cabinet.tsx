@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Building2,
@@ -23,6 +23,7 @@ import { InnField, type Party } from "@/components/inn-field";
 import { STAGES, TIER_META, stageIndex, tierProgress, type LoyaltyTier } from "@/lib/loyalty";
 import { addCompanyByInn, getCabinet, removeCompany, repeatOrder } from "@/lib/cabinet.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { isAuthError } from "@/lib/auth-error";
 import { COMPANY } from "@/lib/company";
 import { useCart } from "@/store/cart-store";
 
