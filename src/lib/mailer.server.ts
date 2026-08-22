@@ -192,6 +192,18 @@ export function recoveryEmail(link: string): { subject: string; html: string } {
   };
 }
 
+export function magicLinkEmail(link: string): { subject: string; html: string } {
+  return {
+    subject: `${BRAND} — вход в B2B-кабинет`,
+    html: layout(
+      "Вход в кабинет",
+      `<h1 style="margin:0 0 12px;font-size:20px;">Одноразовая ссылка для входа</h1>
+       <p style="margin:0;">Перейдите по ссылке, чтобы войти в B2B-кабинет ${BRAND}. Ссылка действует ограниченное время и срабатывает один раз.</p>
+       ${button(link, "Войти в кабинет")}`,
+    ),
+  };
+}
+
 export function inviteEmail(link: string, company?: string): { subject: string; html: string } {
   return {
     subject: `${BRAND} — приглашение в B2B-кабинет`,
