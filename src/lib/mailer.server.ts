@@ -24,8 +24,13 @@ export function siteUrl(): string {
 }
 
 function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`SMTP не настроен: отсутствует ${name} в .env`);
+  const value = (process.env[name] ?? "").trim();
+  if (!value) {
+    // Точная подсказка для VPS: пустой .env или pm2 без --update-env.
+    throw new Error(
+      `SMTP не настроен: пустая переменная ${name}. Заполните SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS в /var/www/almafort/.env и перезапустите: pm2 restart almafort --update-env`,
+    );
+  }
   return value;
 }
 
