@@ -4,25 +4,25 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAuth } from "@/lib/auth-middleware";
 import { EMPTY_LOYALTY, type LoyaltySummary } from "@/lib/loyalty";
 
 const uuid = z.string().uuid();
 
 export const getCabinet = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId } = context;
+    const { db, userId } = context;
 
     const [profileRes, companiesRes, ordersRes, loyaltyRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("companies").select("*").order("created_at", { ascending: true }),
+      db.from("profiles").select("*").eq("id", userId).maybeSingle(),
+      db.from("companies").select("*").order("created_at", { ascending: true }),
       supabase
         .from("orders")
         .select("id, number, status, total, carrier, city, created_at, tracking_number")
         .order("created_at", { ascending: false })
         .limit(50),
-      supabase.rpc("my_loyalty"),
+      db.rpc("my_loyalty"),
     ]);
 
     const loyalty = (loyaltyRes.data as LoyaltySummary | null) ?? EMPTY_LOYALTY;
@@ -39,10 +39,10 @@ export const getCabinet = createServerFn({ method: "GET" })
   });
 
 export const getOrderDetail = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: { orderId: string }) => ({ orderId: uuid.parse(input.orderId) }))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { db } = context;
     const { data: order, error } = await supabase
       .from("orders")
       .select("*")
@@ -59,13 +59,13 @@ export const getOrderDetail = createServerFn({ method: "GET" })
         .select("*")
         .eq("order_id", data.orderId)
         .order("created_at", { ascending: true }),
-      supabase.from("order_documents").select("*").eq("order_id", data.orderId),
+      db.from("order_documents").select("*").eq("order_id", data.orderId),
     ]);
     return { order, events: events.data ?? [], documents: docs.data ?? [] };
   });
 
 export const updateProfile = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: { full_name: string; phone: string }) =>
     z
       .object({
@@ -75,7 +75,7 @@ export const updateProfile = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { error } = await context.db
       .from("profiles")
       .update({ full_name: data.full_name, phone: data.phone })
       .eq("id", context.userId);
@@ -84,7 +84,7 @@ export const updateProfile = createServerFn({ method: "POST" })
   });
 
 export const addCompanyByInn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: { inn: string }) => ({
     inn: z
       .string()
@@ -98,7 +98,7 @@ export const addCompanyByInn = createServerFn({ method: "POST" })
 
     // Реестр недоступен или ИНН свежий — карточку всё равно создаём,
     // менеджер и клиент дозаполнят реквизиты вручную, воронка не рвётся.
-    const { data: row, error } = await context.supabase
+    const { data: row, error } = await context.db
       .from("companies")
       .upsert(
         {
@@ -122,10 +122,10 @@ export const addCompanyByInn = createServerFn({ method: "POST" })
 
 
 export const removeCompany = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: { id: string }) => ({ id: uuid.parse(input.id) }))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("companies").delete().eq("id", data.id);
+    const { error } = await context.db.from("companies").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -140,7 +140,7 @@ const itemSchema = z.object({
 
 /** Сохраняет оформленный заказ в кабинет: карточка + первый этап + счёт. */
 export const saveOrderToCabinet = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -160,7 +160,7 @@ export const saveOrderToCabinet = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId, claims } = context;
+    const { db, userId } = context;
     const emailVerified =
       (claims as { email_verified?: boolean; user_metadata?: { email_verified?: boolean } })
         ?.email_verified ??
@@ -184,7 +184,7 @@ export const saveOrderToCabinet = createServerFn({ method: "POST" })
 
     // Защита от подмены payload в DevTools: цены и суммы пересчитываем на сервере.
     const { PRODUCTS, tierOf, unitPrice } = await import("@/data/catalog");
-    const { data: loyaltyRaw } = await supabase.rpc("my_loyalty");
+    const { data: loyaltyRaw } = await db.rpc("my_loyalty");
     const grade = Number((loyaltyRaw as { tier?: number } | null)?.tier ?? 1);
     const minColumn = Math.min(2, Math.max(0, grade - 1)) as 0 | 1 | 2;
 
@@ -253,7 +253,7 @@ export const saveOrderToCabinet = createServerFn({ method: "POST" })
       throw new Error(error.message);
     }
 
-    await supabase.from("order_events").insert({
+    await db.from("order_events").insert({
       order_id: order.id,
       stage: data.deferred ? "paid" : "awaiting_payment",
       title: data.deferred
@@ -262,7 +262,7 @@ export const saveOrderToCabinet = createServerFn({ method: "POST" })
     });
 
     if (data.invoiceUrl) {
-      await supabase.from("order_documents").insert({
+      await db.from("order_documents").insert({
         order_id: order.id,
         kind: "invoice",
         title: `Счёт на оплату № ${order.number}`,
@@ -274,10 +274,10 @@ export const saveOrderToCabinet = createServerFn({ method: "POST" })
 
 /** «Повторить заказ»: отдаёт состав прошлой сделки для пересбора корзины. */
 export const repeatOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: { orderId: string }) => ({ orderId: uuid.parse(input.orderId) }))
   .handler(async ({ data, context }) => {
-    const { data: order, error } = await context.supabase
+    const { data: order, error } = await context.db
       .from("orders")
       .select("items")
       .eq("id", data.orderId)

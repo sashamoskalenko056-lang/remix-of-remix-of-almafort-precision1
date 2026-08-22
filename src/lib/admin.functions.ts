@@ -4,7 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAuth } from "@/lib/auth-middleware";
 import {
   decryptSecret,
   encryptSecret,
@@ -26,16 +26,16 @@ const uuid = z.string().uuid();
 const PAGE = 20;
 
 export const adminMe = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    const roles = await rolesOf(context.supabase, context.userId);
-    return { roles, email: (context.claims as { email?: string })?.email ?? null };
+    const roles = await rolesOf(context.userId);
+    return { roles, email: context.email };
   });
 
 /* ── БЛОК 2. Заказы ───────────────────────────────────────────────── */
 
 export const adminListOrders = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -48,8 +48,8 @@ export const adminListOrders = createServerFn({ method: "GET" })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    let query = context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    let query = context.db
       .from("orders")
       .select("id, number, status, total, city, carrier, created_at, company_id", { count: "exact" })
       .order("created_at", { ascending: false })
@@ -64,11 +64,11 @@ export const adminListOrders = createServerFn({ method: "GET" })
   });
 
 export const adminGetOrder = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) => z.object({ id: uuid }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    const { data: order, error } = await context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    const { data: order, error } = await context.db
       .from("orders")
       .select("*")
       .eq("id", data.id)
@@ -76,14 +76,14 @@ export const adminGetOrder = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!order) throw new Error("Заказ не найден");
     const [events, docs, company] = await Promise.all([
-      context.supabase
+      context.db
         .from("order_events")
         .select("*")
         .eq("order_id", data.id)
         .order("created_at", { ascending: true }),
-      context.supabase.from("order_documents").select("*").eq("order_id", data.id),
+      context.db.from("order_documents").select("*").eq("order_id", data.id),
       order.company_id
-        ? context.supabase.from("companies").select("*").eq("id", order.company_id).maybeSingle()
+        ? context.db.from("companies").select("*").eq("id", order.company_id).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
     return {
@@ -95,7 +95,7 @@ export const adminGetOrder = createServerFn({ method: "GET" })
   });
 
 export const adminUpdateOrderItems = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -109,8 +109,8 @@ export const adminUpdateOrderItems = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    const { data: current, error: readErr } = await context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    const { data: current, error: readErr } = await context.db
       .from("orders")
       .select("id, items, goods_price, total, delivery_price, updated_at")
       .eq("id", data.id)
@@ -124,7 +124,7 @@ export const adminUpdateOrderItems = createServerFn({ method: "POST" })
 
     const priced = priceItems(data.items);
     const total = priced.goods + Number(current.delivery_price ?? 0);
-    const { error } = await context.supabase
+    const { error } = await context.db
       .from("orders")
       .update({ items: priced.items as never, goods_price: priced.goods, total })
       .eq("id", data.id)
@@ -133,7 +133,7 @@ export const adminUpdateOrderItems = createServerFn({ method: "POST" })
 
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "UPDATE_ORDER_ITEMS",
       data.id,
       { items: current.items, total: current.total },
@@ -143,7 +143,7 @@ export const adminUpdateOrderItems = createServerFn({ method: "POST" })
   });
 
 export const adminSetOrderStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -163,8 +163,8 @@ export const adminSetOrderStatus = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    const { data: prev } = await context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    const { data: prev } = await context.db
       .from("orders")
       .select("status")
       .eq("id", data.id)
@@ -173,9 +173,9 @@ export const adminSetOrderStatus = createServerFn({ method: "POST" })
       status: data.status,
       ...(data.status === "closed" ? { closed_at: new Date().toISOString() } : {}),
     };
-    const { error } = await context.supabase.from("orders").update(patch).eq("id", data.id);
+    const { error } = await context.db.from("orders").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
-    await context.supabase.from("order_events").insert({
+    await context.db.from("order_events").insert({
       order_id: data.id,
       stage: data.status,
       title: data.title,
@@ -184,7 +184,7 @@ export const adminSetOrderStatus = createServerFn({ method: "POST" })
     });
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "UPDATE_ORDER_STATUS",
       data.id,
       prev?.status ?? null,
@@ -194,7 +194,7 @@ export const adminSetOrderStatus = createServerFn({ method: "POST" })
   });
 
 export const adminAttachDocument = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -206,8 +206,8 @@ export const adminAttachDocument = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    const { error } = await context.supabase.from("order_documents").insert({
+    await requireRole(context.userId, ["owner", "manager"]);
+    const { error } = await context.db.from("order_documents").insert({
       order_id: data.orderId,
       kind: data.kind,
       title: data.title,
@@ -216,7 +216,7 @@ export const adminAttachDocument = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "ATTACH_DOCUMENT",
       data.orderId,
       null,
@@ -228,11 +228,11 @@ export const adminAttachDocument = createServerFn({ method: "POST" })
 /* ── БЛОК 3. Контрагенты ──────────────────────────────────────────── */
 
 export const adminListCompanies = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) => z.object({ q: z.string().max(120).optional() }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    let query = context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    let query = context.db
       .from("companies")
       .select("*")
       .order("lifetime_value", { ascending: false })
@@ -244,7 +244,7 @@ export const adminListCompanies = createServerFn({ method: "GET" })
   });
 
 export const adminUpdateCompany = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -257,13 +257,13 @@ export const adminUpdateCompany = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     // Ручное переопределение грейда и отсрочка — только владелец.
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data: prev } = await context.supabase
+    await requireRole(context.userId, ["owner"]);
+    const { data: prev } = await context.db
       .from("companies")
       .select("manual_tier_override, assigned_tier, credit_allowed")
       .eq("id", data.id)
       .maybeSingle();
-    const { error } = await context.supabase
+    const { error } = await context.db
       .from("companies")
       .update({
         manual_tier_override: data.manual_tier_override,
@@ -274,7 +274,7 @@ export const adminUpdateCompany = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "UPDATE_COMPANY_LOYALTY",
       data.id,
       prev ?? null,
@@ -286,10 +286,10 @@ export const adminUpdateCompany = createServerFn({ method: "POST" })
 /* ── БЛОК 4. PIM ──────────────────────────────────────────────────── */
 
 export const adminListProducts = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "content"]);
-    const { data, error } = await context.supabase.from("product_overrides").select("*");
+    await requireRole(context.userId, ["owner", "content"]);
+    const { data, error } = await context.db.from("product_overrides").select("*");
     if (error) throw new Error(error.message);
     return { rows: buildProductMatrix(data ?? []) };
   });
@@ -307,19 +307,19 @@ const overrideSchema = z.object({
 });
 
 export const adminSaveProducts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z.object({ rows: z.array(overrideSchema).min(1).max(2000) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "content"]);
-    const { error } = await context.supabase
+    await requireRole(context.userId, ["owner", "content"]);
+    const { error } = await context.db
       .from("product_overrides")
       .upsert(data.rows as never, { onConflict: "sku" });
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "UPDATE_PRODUCTS",
       data.rows.map((r) => r.sku).join(", ").slice(0, 200),
       null,
@@ -329,19 +329,19 @@ export const adminSaveProducts = createServerFn({ method: "POST" })
   });
 
 export const adminImportProductsCsv = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) => z.object({ csv: z.string().max(2_000_000) }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "content"]);
+    await requireRole(context.userId, ["owner", "content"]);
     const parsed = parseProductCsv(data.csv);
     if (parsed.errors.length) return { ok: false, errors: parsed.errors, updated: 0 };
-    const { error } = await context.supabase
+    const { error } = await context.db
       .from("product_overrides")
       .upsert(parsed.rows as never, { onConflict: "sku" });
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "BATCH_IMPORT_CSV",
       `${parsed.rows.length} SKU`,
       null,
@@ -353,17 +353,17 @@ export const adminImportProductsCsv = createServerFn({ method: "POST" })
 /* ── БЛОК 5. ИИ ───────────────────────────────────────────────────── */
 
 export const adminGetAi = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
+    await requireRole(context.userId, ["owner"]);
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
     const [prompts, logs] = await Promise.all([
-      context.supabase
+      context.db
         .from("llm_prompts")
         .select("*")
         .order("version", { ascending: false })
         .limit(30),
-      context.supabase
+      context.db
         .from("llm_logs")
         .select("*")
         .gte("created_at", since)
@@ -388,15 +388,15 @@ export const adminGetAi = createServerFn({ method: "GET" })
   });
 
 export const adminSavePrompt = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({ slot: z.enum(["configurator", "vision"]), content: z.string().min(20).max(20000) })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data: last } = await context.supabase
+    await requireRole(context.userId, ["owner"]);
+    const { data: last } = await context.db
       .from("llm_prompts")
       .select("version, content")
       .eq("slot", data.slot)
@@ -404,8 +404,8 @@ export const adminSavePrompt = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
     const version = (last?.version ?? 0) + 1;
-    await context.supabase.from("llm_prompts").update({ is_active: false }).eq("slot", data.slot);
-    const { error } = await context.supabase
+    await context.db.from("llm_prompts").update({ is_active: false }).eq("slot", data.slot);
+    const { error } = await context.db
       .from("llm_prompts")
       .insert({
         slot: data.slot,
@@ -417,7 +417,7 @@ export const adminSavePrompt = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "UPDATE_PROMPT",
       `${data.slot} v${version}`,
       last?.content ?? null,
@@ -427,21 +427,21 @@ export const adminSavePrompt = createServerFn({ method: "POST" })
   });
 
 export const adminRollbackPrompt = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) => z.object({ id: uuid }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data: target } = await context.supabase
+    await requireRole(context.userId, ["owner"]);
+    const { data: target } = await context.db
       .from("llm_prompts")
       .select("id, slot, version")
       .eq("id", data.id)
       .maybeSingle();
     if (!target) throw new Error("Версия не найдена");
-    await context.supabase.from("llm_prompts").update({ is_active: false }).eq("slot", target.slot);
-    await context.supabase.from("llm_prompts").update({ is_active: true }).eq("id", data.id);
+    await context.db.from("llm_prompts").update({ is_active: false }).eq("slot", target.slot);
+    await context.db.from("llm_prompts").update({ is_active: true }).eq("id", data.id);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "ROLLBACK_PROMPT",
       `${target.slot} v${target.version}`,
       null,
@@ -453,10 +453,10 @@ export const adminRollbackPrompt = createServerFn({ method: "POST" })
 /* ── БЛОК 6. Настройки и хранилище ключей ─────────────────────────── */
 
 export const adminGetSettings = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data, error } = await context.supabase.from("app_settings").select("*");
+    await requireRole(context.userId, ["owner"]);
+    const { data, error } = await context.db.from("app_settings").select("*");
     if (error) throw new Error(error.message);
     const map = Object.fromEntries((data ?? []).map((r) => [r.key, r.value]));
     const maskOf = (cipher?: string) => {
@@ -506,7 +506,7 @@ export const adminGetSettings = createServerFn({ method: "GET" })
   });
 
 export const adminSaveSetting = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -516,13 +516,13 @@ export const adminSaveSetting = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data: prev } = await context.supabase
+    await requireRole(context.userId, ["owner"]);
+    const { data: prev } = await context.db
       .from("app_settings")
       .select("value")
       .eq("key", data.key)
       .maybeSingle();
-    const { error } = await context.supabase
+    const { error } = await context.db
       .from("app_settings")
       .upsert(
         {
@@ -535,7 +535,7 @@ export const adminSaveSetting = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "UPDATE_SETTING",
       data.key,
       prev?.value ?? null,
@@ -545,7 +545,7 @@ export const adminSaveSetting = createServerFn({ method: "POST" })
   });
 
 export const adminSaveApiKey = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -557,7 +557,7 @@ export const adminSaveApiKey = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
+    await requireRole(context.userId, ["owner"]);
     const known = VAULT_KEYS.some((k) => k.name === data.name);
 
     if (!known) {
@@ -565,7 +565,7 @@ export const adminSaveApiKey = createServerFn({ method: "POST" })
       if (!/^[A-Z0-9_]{3,60}$/.test(data.name)) {
         throw new Error("Имя ключа: только латиница в верхнем регистре, цифры и «_»");
       }
-      const { data: reg } = await context.supabase
+      const { data: reg } = await context.db
         .from("app_settings")
         .select("value")
         .eq("key", "vault_custom")
@@ -575,7 +575,7 @@ export const adminSaveApiKey = createServerFn({ method: "POST" })
       if (!list.some((c) => c.name === data.name)) {
         if (list.length >= 40) throw new Error("Достигнут лимит пользовательских интеграций (40)");
         list.push({ name: data.name, label: data.label?.trim() || data.name });
-        const { error: regErr } = await context.supabase
+        const { error: regErr } = await context.db
           .from("app_settings")
           .upsert(
             { key: "vault_custom", value: { list } as never, is_public: false } as never,
@@ -585,7 +585,7 @@ export const adminSaveApiKey = createServerFn({ method: "POST" })
       }
     }
 
-    const { error } = await context.supabase
+    const { error } = await context.db
       .from("app_settings")
       .upsert(
         { key: `vault:${data.name}`, value: { cipher: encryptSecret(data.value) } as never, is_public: false } as never,
@@ -597,7 +597,7 @@ export const adminSaveApiKey = createServerFn({ method: "POST" })
     invalidateSecret(data.name);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "UPDATE_API_KEY",
       data.name,
       null,
@@ -608,34 +608,34 @@ export const adminSaveApiKey = createServerFn({ method: "POST" })
 
 /** Удаление пользовательской интеграции: и значение, и запись в реестре. */
 export const adminDeleteApiKey = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z.object({ name: z.string().trim().min(3).max(60) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
+    await requireRole(context.userId, ["owner"]);
     if (VAULT_KEYS.some((k) => k.name === data.name)) {
       throw new Error("Системный ключ удалить нельзя — очистите значение вручную");
     }
-    const { data: reg } = await context.supabase
+    const { data: reg } = await context.db
       .from("app_settings")
       .select("value")
       .eq("key", "vault_custom")
       .maybeSingle();
     const list = ((reg?.value as { list?: Array<{ name: string; label: string }> } | null)?.list ??
       []).filter((c) => c.name !== data.name);
-    await context.supabase
+    await context.db
       .from("app_settings")
       .upsert(
         { key: "vault_custom", value: { list } as never, is_public: false } as never,
         { onConflict: "key" },
       );
-    await context.supabase.from("app_settings").delete().eq("key", `vault:${data.name}`);
+    await context.db.from("app_settings").delete().eq("key", `vault:${data.name}`);
     const { invalidateSecret } = await import("@/lib/vault.server");
     invalidateSecret(data.name);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "DELETE_API_KEY",
       data.name,
       null,
@@ -647,13 +647,13 @@ export const adminDeleteApiKey = createServerFn({ method: "POST" })
 /* ── Персонал и журнал ────────────────────────────────────────────── */
 
 export const adminListLogs = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z.object({ page: z.number().int().min(0).max(200).default(0) }).parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data: rows, count, error } = await context.supabase
+    await requireRole(context.userId, ["owner"]);
+    const { data: rows, count, error } = await context.db
       .from("admin_logs")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
@@ -663,17 +663,17 @@ export const adminListLogs = createServerFn({ method: "GET" })
   });
 
 export const adminListStaff = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data, error } = await context.supabase
+    await requireRole(context.userId, ["owner"]);
+    const { data, error } = await context.db
       .from("user_roles")
       .select("id, user_id, role, created_at")
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     const ids = [...new Set((data ?? []).map((r) => r.user_id))];
     const { data: profiles } = ids.length
-      ? await context.supabase.from("profiles").select("id, email, full_name").in("id", ids)
+      ? await context.db.from("profiles").select("id, email, full_name").in("id", ids)
       : { data: [] as Array<{ id: string; email: string | null; full_name: string | null }> };
     const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
     return {
@@ -686,7 +686,7 @@ export const adminListStaff = createServerFn({ method: "GET" })
   });
 
 export const adminSetStaffRole = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -697,8 +697,8 @@ export const adminSetStaffRole = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner"]);
-    const { data: profile } = await context.supabase
+    await requireRole(context.userId, ["owner"]);
+    const { data: profile } = await context.db
       .from("profiles")
       .select("id")
       .eq("email", data.email)
@@ -730,7 +730,7 @@ export const adminSetStaffRole = createServerFn({ method: "POST" })
     }
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       data.revoke ? "REVOKE_ROLE" : "GRANT_ROLE",
       data.email,
       null,
@@ -751,12 +751,12 @@ const assetImageSchema = z.object({
 
 /** Список групп контента и привязанных к ним артикулов. */
 export const adminListAssetGroups = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "content"]);
+    await requireRole(context.userId, ["owner", "content"]);
     const [groups, links] = await Promise.all([
-      context.supabase.from("asset_groups").select("id, slug, title, description, images"),
-      context.supabase.from("product_asset_links").select("sku, group_id"),
+      context.db.from("asset_groups").select("id, slug, title, description, images"),
+      context.db.from("product_asset_links").select("sku, group_id"),
     ]);
     if (groups.error) throw new Error(groups.error.message);
     if (links.error) throw new Error(links.error.message);
@@ -768,7 +768,7 @@ export const adminListAssetGroups = createServerFn({ method: "GET" })
  * контента и переустанавливает связи Many-to-One строго на выбранные SKU.
  */
 export const adminLinkAssetGroup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -781,7 +781,7 @@ export const adminLinkAssetGroup = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "content"]);
+    await requireRole(context.userId, ["owner", "content"]);
     // EXECUTE на link_asset_group отозван у роли authenticated: вызов идёт
     // только с сервера после проверки роли выше.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -795,7 +795,7 @@ export const adminLinkAssetGroup = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "LINK_ASSET_GROUP",
       `${data.slug}: ${data.skus.join(", ")}`.slice(0, 200),
       null,
@@ -806,10 +806,10 @@ export const adminLinkAssetGroup = createServerFn({ method: "POST" })
 
 /** Очередь обмена с 1С: что не ушло и почему. */
 export const adminErpJobs = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    const { data, error } = await context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    const { data, error } = await context.db
       .from("erp_sync_jobs")
       .select("id, order_number, status, attempts, last_error, next_attempt_at, created_at")
       .order("created_at", { ascending: false })
@@ -820,14 +820,14 @@ export const adminErpJobs = createServerFn({ method: "GET" })
 
 /** Ручной прогон Retry Pattern из админки — без ожидания крона. */
 export const adminRetryErp = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
+    await requireRole(context.userId, ["owner", "manager"]);
     const { retryPendingOrders } = await import("@/lib/erp-1c.server");
     const result = await retryPendingOrders();
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "ERP_RETRY",
       `обработано ${result.processed}, синхронизировано ${result.synced}`,
       null,
@@ -840,10 +840,10 @@ export const adminRetryErp = createServerFn({ method: "POST" })
 
 /** Список заявок на спеццену: что запросили и по какому артикулу. */
 export const adminBulkRequests = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    const { data, error } = await context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    const { data, error } = await context.db
       .from("bulk_requests")
       .select(
         "id, sku, product_name, base_price, qty, contact_name, phone, email, inn, comment, status, created_at",
@@ -856,20 +856,20 @@ export const adminBulkRequests = createServerFn({ method: "GET" })
 
 /** Пометить заявку обработанной. */
 export const adminSetBulkStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) =>
     z.object({ id: uuid, status: z.enum(["new", "in_work", "done"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    await requireRole(context.supabase, context.userId, ["owner", "manager"]);
-    const { error } = await context.supabase
+    await requireRole(context.userId, ["owner", "manager"]);
+    const { error } = await context.db
       .from("bulk_requests")
       .update({ status: data.status })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     await logAdmin(
       context.userId,
-      (context.claims as { email?: string })?.email ?? null,
+      context.email,
       "bulk_request_status",
       data.id,
       null,
