@@ -10,7 +10,7 @@
  *   full_url  — 800×800 для модального окна.
  */
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { getAssetGroupsData } from "@/lib/public.functions";
 
 export type AssetImage = {
   thumb_url: string;
@@ -34,24 +34,20 @@ const isImage = (v: unknown): v is AssetImage =>
 
 /** Карта SKU → группа контента. Пустая карта = фото ещё не привязаны. */
 export async function fetchAssetGroups(): Promise<Map<string, AssetGroup>> {
-  const [groupsRes, linksRes] = await Promise.all([
-    supabase.from("asset_groups").select("id, slug, title, description, images"),
-    supabase.from("product_asset_links").select("sku, group_id"),
-  ]);
   const map = new Map<string, AssetGroup>();
-  if (groupsRes.error || linksRes.error) return map;
+  const { groups, links } = await getAssetGroupsData().catch(() => ({ groups: [], links: [] }));
 
   const byId = new Map<string, AssetGroup>();
-  for (const g of groupsRes.data ?? []) {
+  for (const g of groups) {
     byId.set(g.id, {
       id: g.id,
       slug: g.slug,
       title: g.title,
       description: g.description ?? "",
-      images: Array.isArray(g.images) ? (g.images as unknown[]).filter(isImage) : [],
+      images: (g.images as unknown[]).filter(isImage),
     });
   }
-  for (const l of linksRes.data ?? []) {
+  for (const l of links) {
     const g = byId.get(l.group_id);
     if (g) map.set(l.sku, g);
   }

@@ -20,7 +20,7 @@ import { ProductThumb } from "@/components/catalog/product-thumb";
 import { useLoyalty } from "@/hooks/use-loyalty";
 import { TIER_META } from "@/lib/loyalty";
 import { saveOrderToCabinet } from "@/lib/cabinet.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { isAuthed } from "@/lib/session";
 import {
   cartTotals,
   deliveryCost,
@@ -227,8 +227,7 @@ export function CartPanel() {
 
       // Вход мог произойти в соседней вкладке: перечитываем сессию,
       // чтобы заказ привязался к аккаунту, а не ушёл как гостевой.
-      const { data: fresh } = await supabase.auth.getSession();
-      if (authed || fresh.session) {
+      if (authed || isAuthed()) {
         try {
           await saveOrderToCabinet({
             data: {
