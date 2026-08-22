@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { isAuthed, onAuthChange } from "@/lib/session";
 import { useCart } from "@/store/cart-store";
 import { mergeSavedCart, saveCart } from "@/lib/cart-sync.functions";
 
@@ -30,21 +30,18 @@ export function CartSync() {
       }
     };
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (data.session && !signedIn.current) {
-        signedIn.current = true;
-        void run();
-      }
-    });
+    if (isAuthed() && !signedIn.current) {
+      signedIn.current = true;
+      void run();
+    }
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session && !signedIn.current) {
+    return onAuthChange((event) => {
+      if (event === "SIGNED_IN" && !signedIn.current) {
         signedIn.current = true;
         void run();
       }
       if (event === "SIGNED_OUT") signedIn.current = false;
     });
-    return () => sub.subscription.unsubscribe();
   }, [merge, applyMerged]);
 
   // Кросс-таб синхронизация: снабженец держит 15 вкладок с карточками.

@@ -10,8 +10,8 @@ const MAX_ATTEMPTS = 8;
 const RETRY_MS = 15 * 60_000;
 
 async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin;
+  const { db: store } = await import("@/lib/db.server");
+  return store;
 }
 
 /** Кладём неотправленный лид в резервную очередь. */

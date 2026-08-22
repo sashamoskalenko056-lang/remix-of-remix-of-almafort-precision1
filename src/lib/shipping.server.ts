@@ -198,8 +198,8 @@ async function dlQuote(dest: Destination, parcel: Parcel): Promise<ShippingQuote
 /** Наценка производства сверх тарифа ТК (упаковка, обрешётка) из панели управления. */
 async function markup(): Promise<{ fixed: number; percent: number }> {
   try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { db: store } = await import("@/lib/db.server");
+    const { data } = await store
       .from("app_settings")
       .select("value")
       .eq("key", "logistics_markup")

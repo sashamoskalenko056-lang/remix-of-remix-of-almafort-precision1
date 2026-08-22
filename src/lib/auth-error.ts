@@ -1,5 +1,5 @@
 /**
- * Определение «протухшей» сессии: серверные функции с requireSupabaseAuth
+ * Определение «протухшей» сессии: серверные функции с requireAuth
  * отвечают 401/Unauthorized, если bearer-токен отсутствует или истёк.
  */
 export function isAuthError(error: unknown): boolean {

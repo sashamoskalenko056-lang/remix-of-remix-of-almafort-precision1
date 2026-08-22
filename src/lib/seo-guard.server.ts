@@ -34,31 +34,25 @@ async function readMaintenance(): Promise<Maintenance> {
   const now = Date.now();
   if (cache && now - cache.at < MAINTENANCE_TTL_MS) return cache.value;
 
-  const base = process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"];
-  const key =
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ?? process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
   let value: Maintenance = { enabled: false, message: "", retryAfter: DEFAULT_RETRY_AFTER };
 
-  if (base && key) {
-    try {
-      const res = await fetch(
-        `${base}/rest/v1/app_settings?select=value&key=eq.maintenance_mode&limit=1`,
-        { headers: { apikey: key, Accept: "application/json" } },
-      );
-      if (res.ok) {
-        const rows = (await res.json()) as Array<{
-          value?: { enabled?: boolean; message?: string; retry_after?: number };
-        }>;
-        const v = rows[0]?.value;
-        value = {
-          enabled: Boolean(v?.enabled),
-          message: v?.message ?? "",
-          retryAfter: Number(v?.retry_after) > 0 ? Number(v?.retry_after) : DEFAULT_RETRY_AFTER,
-        };
-      }
-    } catch {
-      // Недоступность настроек не должна ронять сайт — работаем в обычном режиме.
-    }
+  try {
+    const { db } = await import("@/lib/db.server");
+    const { data } = await db
+      .from("app_settings")
+      .select("value")
+      .eq("key", "maintenance_mode")
+      .maybeSingle();
+    const v = (data?.["value"] ?? null) as
+      | { enabled?: boolean; message?: string; retry_after?: number }
+      | null;
+    value = {
+      enabled: Boolean(v?.enabled),
+      message: v?.message ?? "",
+      retryAfter: Number(v?.retry_after) > 0 ? Number(v?.retry_after) : DEFAULT_RETRY_AFTER,
+    };
+  } catch {
+    // Недоступность настроек не должна ронять сайт — работаем в обычном режиме.
   }
 
   cache = { at: now, value };

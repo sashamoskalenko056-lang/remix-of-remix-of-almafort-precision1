@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { STAGES, TIER_META, stageIndex, tierProgress, type LoyaltyTier } from "@/lib/loyalty";
 import { addCompanyByInn, removeCompany, repeatOrder } from "@/lib/cabinet.functions";
 import { getCabinetFromBrowser } from "@/lib/cabinet-client";
-import { supabase } from "@/integrations/supabase/client";
+import { clearSession } from "@/lib/session";
 import { isAuthError } from "@/lib/auth-error";
 import { COMPANY } from "@/lib/company";
 import { useCart } from "@/store/cart-store";
@@ -73,7 +73,7 @@ function CabinetPage() {
     void (async () => {
       await qc.cancelQueries();
       qc.clear();
-      await supabase.auth.signOut();
+      clearSession();
       void navigate({ to: "/auth", replace: true });
     })();
   }, [error, qc, navigate]);
@@ -85,7 +85,7 @@ function CabinetPage() {
   const signOut = async () => {
     await qc.cancelQueries();
     qc.clear();
-    await supabase.auth.signOut();
+    clearSession();
     void navigate({ to: "/auth", replace: true });
   };
 

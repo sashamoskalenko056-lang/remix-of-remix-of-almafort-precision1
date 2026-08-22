@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getCabinet } from "@/lib/cabinet.functions";
+import { currentUser, isAuthed, onAuthChange } from "@/lib/session";
 import { EMPTY_LOYALTY, TIER_META, type LoyaltySummary, type LoyaltyTier } from "@/lib/loyalty";
 
 /**
@@ -14,34 +15,42 @@ export function useLoyalty() {
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      const { data: sess } = await supabase.auth.getSession();
+      const user = currentUser();
       if (!alive) return;
-      setAuthed(Boolean(sess.session));
-      if (!sess.session) {
+      setAuthed(isAuthed());
+      if (!user) {
         setSummary(EMPTY_LOYALTY);
         setVerified(true);
         return;
       }
-      setVerified(Boolean(sess.session.user.email_confirmed_at));
-      const { data } = await supabase.rpc("my_loyalty");
-      if (!alive || !data) return;
-      const s = data as unknown as LoyaltySummary;
-      setSummary({
-        total_spent: Number(s.total_spent ?? 0),
-        tier: (s.tier ?? 1) as LoyaltyTier,
-        next_threshold: s.next_threshold ?? null,
-      });
+      setVerified(user.email_verified);
+      try {
+        const data = await getCabinet();
+        if (!alive) return;
+        setSummary({
+          total_spent: Number(data.loyalty.total_spent ?? 0),
+          tier: (data.loyalty.tier ?? 1) as LoyaltyTier,
+          next_threshold: data.loyalty.next_threshold ?? null,
+        });
+      } catch {
+        // Гость или протухшая сессия — остаёмся на базовом грейде.
+      }
     };
     void load();
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") void load();
-    });
+    const off = onAuthChange(() => void load());
     return () => {
       alive = false;
-      sub.subscription.unsubscribe();
+      off();
     };
   }, []);
 
   const tier = summary.tier;
-  return { summary, tier, authed, verified, minColumn: TIER_META[tier].minColumn, credit: TIER_META[tier].credit };
+  return {
+    summary,
+    tier,
+    authed,
+    verified,
+    minColumn: TIER_META[tier].minColumn,
+    credit: TIER_META[tier].credit,
+  };
 }

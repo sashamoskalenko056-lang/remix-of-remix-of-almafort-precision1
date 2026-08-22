@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { getMaintenanceState } from "@/lib/public.functions";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -155,16 +155,11 @@ function MaintenanceGate() {
 
   useEffect(() => {
     let alive = true;
-    void supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "maintenance_mode")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!alive) return;
-        const v = (data as { value?: { enabled?: boolean; message?: string } } | null)?.value;
-        setState({ enabled: Boolean(v?.enabled), message: v?.message ?? "" });
-      });
+    void getMaintenanceState()
+      .then((v) => {
+        if (alive) setState(v);
+      })
+      .catch(() => {});
     return () => {
       alive = false;
     };

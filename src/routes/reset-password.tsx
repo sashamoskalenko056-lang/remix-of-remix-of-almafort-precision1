@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { KeyRound, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { BackLink } from "@/components/back-link";
-import { supabase } from "@/integrations/supabase/client";
+import { resetPassword } from "@/lib/auth.functions";
+import { writeSession } from "@/lib/session";
 import { authErrorMessage } from "@/lib/auth-errors";
 
 
@@ -33,29 +34,16 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
-  // Письмо ведёт на наш хост со ссылкой ?token_hash=...&type=recovery —
-  // обмениваем одноразовый токен на временную сессию прямо здесь.
+  const [token, setToken] = useState<string | null>(null);
+
+  // Письмо ведёт на наш хост со ссылкой ?token=... — одноразовый токен проверяем при сохранении.
   useEffect(() => {
     const url = new URL(window.location.href);
-    const tokenHash = url.searchParams.get("token_hash");
-    void (async () => {
-      if (tokenHash) {
-        const { error } = await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash });
-        url.searchParams.delete("token_hash");
-        url.searchParams.delete("type");
-        window.history.replaceState(null, "", url.pathname + url.search);
-        if (!error) {
-          setReady(true);
-          return;
-        }
-      }
-      const { data } = await supabase.auth.getSession();
-      setReady(Boolean(data.session));
-    })();
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) setReady(true);
-    });
-    return () => sub.subscription.unsubscribe();
+    const t = url.searchParams.get("token") ?? url.searchParams.get("token_hash");
+    if (t) {
+      setToken(t);
+      setReady(true);
+    }
   }, []);
 
   const save = async () => {
@@ -69,18 +57,22 @@ function ResetPasswordPage() {
       toast.error("Пароли не совпадают");
       return;
     }
-    setBusy(true);
-    const { error } = await supabase.auth.updateUser({ password }).catch((e) => ({ error: e }));
-    setBusy(false);
-    if (error) {
-      toast.error(authErrorMessage(error));
+    if (!token) {
+      toast.error("Ссылка недействительна. Запросите новую на странице входа.");
       return;
     }
-
-    // Сбрасываем все прочие сессии: украденный refresh-токен становится бесполезным.
-    await supabase.auth.signOut({ scope: "others" });
-    toast.success("Пароль обновлён — остальные устройства разлогинены");
-    void navigate({ to: "/cabinet", replace: true });
+    setBusy(true);
+    try {
+      const session = await resetPassword({ data: { token, password } });
+      // Токен одноразовый: прежние сессии на других устройствах становятся бесполезны.
+      writeSession({ token: session.token, expiresAt: session.expiresAt, user: session.user });
+      toast.success("Пароль обновлён — вход выполнен");
+      void navigate({ to: "/cabinet", replace: true });
+    } catch (e) {
+      toast.error(authErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

@@ -1,5 +1,5 @@
 /**
- * Node < 22 не имеет глобального WebSocket, а supabase-js (Realtime) требует его
+ * Node < 22 не имеет глобального WebSocket, а часть библиотек требует его
  * уже на этапе createClient и падает с
  * «Node.js detected but native WebSocket not found».
  * На VPS (node-server) подставляем реализацию из пакета `ws` через createRequire,

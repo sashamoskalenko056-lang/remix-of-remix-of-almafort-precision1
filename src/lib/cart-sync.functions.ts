@@ -4,7 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAuth } from "@/lib/auth-middleware";
 
 const lineSchema = z.object({
   sku: z.string().trim().min(1).max(64),
@@ -23,13 +23,13 @@ export function mergeCartLines(a: SyncedLine[], b: SyncedLine[]): SyncedLine[] {
 }
 
 export const mergeSavedCart = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: { lines: SyncedLine[] }) =>
     z.object({ lines: z.array(lineSchema).max(500) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: row } = await supabase
+    const { db, userId } = context;
+    const { data: row } = await db
       .from("saved_carts")
       .select("lines")
       .eq("user_id", userId)
@@ -38,7 +38,7 @@ export const mergeSavedCart = createServerFn({ method: "POST" })
     const stored = z.array(lineSchema).catch([]).parse(row?.lines ?? []);
     const merged = mergeCartLines(stored, data.lines);
 
-    const { error } = await supabase
+    const { error } = await db
       .from("saved_carts")
       .upsert({ user_id: userId, lines: merged }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
@@ -47,12 +47,12 @@ export const mergeSavedCart = createServerFn({ method: "POST" })
   });
 
 export const saveCart = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: { lines: SyncedLine[] }) =>
     z.object({ lines: z.array(lineSchema).max(500) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { error } = await context.db
       .from("saved_carts")
       .upsert({ user_id: context.userId, lines: data.lines }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { generateInvoicePdfInBrowser } from "@/lib/pdf-browser";
 import { readLastOrder, type LastOrder } from "@/lib/last-order";
-import { supabase } from "@/integrations/supabase/client";
+import { isAuthed } from "@/lib/session";
 
 
 export const Route = createFileRoute("/success")({
@@ -36,13 +36,7 @@ function SuccessPage() {
   const [authed, setAuthed] = useState(false);
   useEffect(() => setOrder(readLastOrder()), []);
   useEffect(() => {
-    let alive = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (alive) setAuthed(Boolean(data.session));
-    });
-    return () => {
-      alive = false;
-    };
+    setAuthed(isAuthed());
   }, []);
 
 

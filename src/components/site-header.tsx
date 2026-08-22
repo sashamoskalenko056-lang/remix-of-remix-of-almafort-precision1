@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Clock, MapPin, Phone, UserRound, Menu, ShoppingCart, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { currentUser, onAuthChange } from "@/lib/session";
 import { useCart } from "@/store/cart-store";
 import { trackContact } from "@/lib/metrika";
 
@@ -38,19 +38,9 @@ export function SiteHeader() {
   }, [open]);
 
   useEffect(() => {
-    let alive = true;
-    const sync = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (alive) setAccount(data.session?.user.email ?? "");
-    };
-    void sync();
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") void sync();
-    });
-    return () => {
-      alive = false;
-      sub.subscription.unsubscribe();
-    };
+    const sync = () => setAccount(currentUser()?.email ?? "");
+    sync();
+    return onAuthChange(sync);
   }, []);
 
   const authed = Boolean(account);

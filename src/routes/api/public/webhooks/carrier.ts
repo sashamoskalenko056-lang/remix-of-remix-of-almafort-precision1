@@ -45,8 +45,8 @@ export const Route = createFileRoute("/api/public/webhooks/carrier")({
           return Response.json({ error: "Bad payload" }, { status: 400 });
         }
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: order, error } = await supabaseAdmin
+        const { db: store } = await import("@/lib/db.server");
+        const { data: order, error } = await store
           .from("orders")
           .select("id")
           .eq("tracking_number", body.tracking_number)
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/public/webhooks/carrier")({
         if (error) return Response.json({ error: "Storage error" }, { status: 500 });
         if (!order) return Response.json({ ok: true, matched: false });
 
-        await supabaseAdmin
+        await store
           .from("orders")
           .update({
             status: body.stage,
@@ -64,7 +64,7 @@ export const Route = createFileRoute("/api/public/webhooks/carrier")({
           })
           .eq("id", order.id);
 
-        await supabaseAdmin.from("order_events").insert({
+        await store.from("order_events").insert({
           order_id: order.id,
           stage: body.stage,
           title: STAGE_TITLE[body.stage] ?? "Обновление статуса",
