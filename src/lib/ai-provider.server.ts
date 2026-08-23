@@ -222,7 +222,7 @@ async function postJson(
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     console.error(`[ai:${r.provider}] ${path} ${res.status}: ${detail.slice(0, 500)}`);
-    throw gatewayError(res.status, task);
+    throw gatewayError(res.status, task, detail);
   }
   return res;
 }
