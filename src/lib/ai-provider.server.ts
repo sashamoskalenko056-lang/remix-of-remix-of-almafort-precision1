@@ -171,16 +171,25 @@ function authHeaders(r: Resolved): Record<string, string> {
 }
 
 /** Человеческие сообщения вместо кодов ошибок провайдера. */
-function gatewayError(status: number, task: AiTask): AiGatewayError {
+function gatewayError(status: number, task: AiTask, detail = ""): AiGatewayError {
   const what = task === "vision" ? "распознавания" : "конфигуратора";
   if (status === 429)
     return new AiGatewayError("Слишком много запросов к ИИ. Повторите через минуту.", status);
   if (status === 402 || status === 403)
     return new AiGatewayError("Лимит ИИ-запросов исчерпан. Обратитесь к менеджеру.", status);
-  if (status === 401)
-    return new AiGatewayError("Сервис временно недоступен", status);
+  if (status === 401) {
+    // Ключ шлюза истёк или отозван — это настройка, а не сбой сети.
+    const expired = /expired/i.test(detail);
+    return new AiGatewayError(
+      expired
+        ? "Ключ доступа к ИИ-шлюзу истёк. Обновите OPENAI_API_KEY в настройках."
+        : "Ключ доступа к ИИ-шлюзу неверен. Проверьте OPENAI_API_KEY и OPENAI_BASE_URL.",
+      status,
+    );
+  }
   return new AiGatewayError(`Сервис ${what} временно недоступен`, status);
 }
+
 
 async function postJson(
   r: Resolved,
@@ -213,7 +222,7 @@ async function postJson(
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     console.error(`[ai:${r.provider}] ${path} ${res.status}: ${detail.slice(0, 500)}`);
-    throw gatewayError(res.status, task);
+    throw gatewayError(res.status, task, detail);
   }
   return res;
 }
