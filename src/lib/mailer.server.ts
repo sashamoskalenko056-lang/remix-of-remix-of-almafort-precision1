@@ -104,13 +104,50 @@ async function getTransporter(): Promise<Transporter> {
   return transporterPromise;
 }
 
-export async function sendMail(payload: MailPayload): Promise<{ messageId?: string }> {
-  const fromEmail = process.env["SMTP_FROM"] || process.env["SMTP_USER"] || "";
+function mailFrom(): string {
+  const fromEmail =
+    process.env["RESEND_FROM"] || process.env["SMTP_FROM"] || process.env["SMTP_USER"] || "onboarding@resend.dev";
   const fromName = process.env["SMTP_FROM_NAME"] || "ALMAFORT";
+  return `${fromName} <${fromEmail}>`;
+}
+
+/** Отправка через HTTPS API Resend (порт 443) — работает там, где хостинг блокирует SMTP. */
+async function sendViaResend(payload: MailPayload, apiKey: string): Promise<{ messageId?: string }> {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: mailFrom(),
+      to: [payload.to],
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text ?? stripHtml(payload.html),
+      ...(payload.replyTo ? { reply_to: payload.replyTo } : {}),
+    }),
+  });
+  const body = await res.text();
+  if (!res.ok) {
+    console.error("[mailer] RESEND ОШИБКА", res.status, body);
+    throw new Error(`Resend API ${res.status}: ${body}`);
+  }
+  let id: string | undefined;
+  try {
+    id = (JSON.parse(body) as { id?: string }).id;
+  } catch {
+    /* ignore */
+  }
+  console.info(`[mailer] Resend отправлено -> ${payload.to} (${id ?? "no-id"})`);
+  return { ...(id ? { messageId: id } : {}) };
+}
+
+export async function sendMail(payload: MailPayload): Promise<{ messageId?: string }> {
+  const resendKey = (process.env["RESEND_API_KEY"] ?? "").trim();
+  if (resendKey) return sendViaResend(payload, resendKey);
+
   try {
     const transporter = await getTransporter();
     const info = await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
+      from: mailFrom(),
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
@@ -139,11 +176,20 @@ export async function sendMail(payload: MailPayload): Promise<{ messageId?: stri
   }
 }
 
-/** Диагностика соединения: используется health-проверкой SMTP. */
+/** Диагностика канала отправки: Resend API или SMTP-соединение. */
 export async function verifySmtp(): Promise<void> {
+  const resendKey = (process.env["RESEND_API_KEY"] ?? "").trim();
+  if (resendKey) {
+    const res = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${resendKey}` },
+    });
+    if (!res.ok) throw new Error(`Resend API ${res.status}: ${await res.text()}`);
+    return;
+  }
   const transporter = (await getTransporter()) as Transporter & { verify?: () => Promise<boolean> };
   if (transporter.verify) await transporter.verify();
 }
+
 
 function stripHtml(html: string): string {
   return html
